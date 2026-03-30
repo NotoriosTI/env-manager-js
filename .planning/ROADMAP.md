@@ -75,7 +75,7 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 - All 13 test files from `tests/` in `../env-manager/`
 - `tests/conftest.py` for fixture and env var teardown list
 
-#### Plan 2.3 — Read Python test fixtures
+#### Plan 2.3 — Read Python test fixtures COMPLETE (2026-03-30)
 - `tests/fixtures/test_config.example.yaml`, `prod_config.example.yaml`
 - `config_vars.yaml.example`
 
@@ -405,7 +405,7 @@ Phase 1 (Bootstrap)
 ## Open Questions
 
 - [ ] Does `@google-cloud/secret-manager` v6 wrap NotFound errors differently than gRPC code-5 direct access? (Validate in Phase 6 against real client source or emulator)
-- [ ] Which YAML schema does PyYAML use for `yes`/`no` boolean parsing — 1.1 or 1.2? (Determine in Phase 2 — affects `loadYaml()` options in Phase 5)
+- [x] Which YAML schema does PyYAML use for `yes`/`no` boolean parsing — 1.1 or 1.2? RESOLVED: All fixtures use YAML 1.2 constructs only (true/false, no yes/no). `yaml` npm default schema handles everything.
 - [ ] Is `APP_ENV` confirmed as the exact environment variable name in Python `manager.py` (not `ENVIRONMENT`)? (Confirm in Phase 2 before writing any tests in Phase 3)
 
 ---
