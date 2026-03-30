@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-last_updated: "2026-03-30T20:10:11Z"
+last_updated: "2026-03-30T20:12:31.772Z"
 progress:
   total_phases: 8
   completed_phases: 4
   total_plans: 18
-  completed_plans: 16
+  completed_plans: 17
 ---
 
 # Project State: env-manager-js
@@ -26,7 +26,7 @@ Last updated: 2026-03-30
 | 2 — Python Analysis & Behavioral Catalog | Complete | All 4 plans done; behavioral catalog at .planning/research/BEHAVIORAL_CATALOG.md |
 | 3 — Write All Tests (TDD First) | Complete | Plans 3.1-3.6 complete; fixtures and end-to-end coverage added, and Vitest discovery confirmed against stub/import failures |
 | 4 — Type Stubs | Complete | Plans 4.1 and 4.2 complete; full stub surface now exists and Vitest fails on `Not implemented` paths |
-| 5 — Core Implementation: utils + environment | In progress | Plan 5.2 complete; Plan 5.1 and Plan 5.3 remain |
+| 5 — Core Implementation: utils + environment | In progress | Plans 5.1 and 5.2 complete; Plan 5.3 remains |
 | 6 — Loaders + Factory | Not started | LOAD-01–09 |
 | 7 — ConfigManager + Singleton | Not started | RES-01–16, VAL-01–13, MGR-01–16 |
 | 8 — Integration Verification + Publish | Not started | PKG-03, PKG-04 |
@@ -34,8 +34,8 @@ Last updated: 2026-03-30
 ## Requirement Coverage
 
 - Total v1 requirements: 68
-- Completed: 14 (PKG-01, PKG-02, ENV-01–12)
-- Remaining: 54
+- Completed: 24 (PKG-01, PKG-02, UTIL-01–10, ENV-01–12)
+- Remaining: 44
 
 ## Key Decisions Locked
 
@@ -75,18 +75,21 @@ Last updated: 2026-03-30
 - Phase 5.2 treats a missing `environments` section as a valid empty mapping.
 - Environment parsing canonicalizes origin values to lowercase and normalizes unused fields to `null`.
 - Duplicate default environments fail during parsing rather than later manager initialization.
+- [Phase 05]: Phase 5.1 string coercion special-cases booleans before `String(value)` so YAML booleans become lowercase `true`/`false`.
+- [Phase 05]: Phase 5.1 loadYaml owns missing-file and root-mapping validation and returns {} for empty YAML documents.
 
 ## Performance Metrics
 
 | Phase | Plan | Duration | Tasks | Files |
 |-------|------|----------|-------|-------|
+| 05 | 01 | 2 min | 2 | 1 |
 | 05 | 02 | 3 min | 2 | 1 |
 
 ## Session Continuity
 
-- Stopped at: Completed 05-02-PLAN.md
+- Stopped at: Completed 05-01-PLAN.md
 - Resume file: None
-- Next: Phase 5 Plan 5.1 / 5.3 -- finish utils implementation and run the combined Phase 5 verification pass
+- Next: Phase 5 Plan 5.3 -- run the merged Phase 5 quick suite and final regression confirmation
 
 ---
-*State updated: 2026-03-30 after Plan 5.2 completion (environment parsing implemented; Phase 5 in progress)*
+*State updated: 2026-03-30 after Plan 5.1 completion (utility implementation complete; Phase 5.3 next)*

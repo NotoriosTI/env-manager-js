@@ -9,16 +9,16 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Core Utilities
 
-- [ ] **UTIL-01**: `coerceType` converts string values to str/int/float/bool with exact Python semantics
-- [ ] **UTIL-02**: `coerceType` handles null input by returning null immediately
-- [ ] **UTIL-03**: `coerceType` handles YAML auto-converted booleans (true/false → "true"/"false" for type: str)
-- [ ] **UTIL-04**: `coerceType` handles YAML auto-converted numbers (8080 → "8080" for type: str)
-- [ ] **UTIL-05**: `coerceType` throws on invalid boolean values (e.g., "yes") with exact error message
-- [ ] **UTIL-06**: `coerceType` throws on unsupported types (e.g., "date") with exact error message
-- [ ] **UTIL-07**: `maskSecret` masks short values (<10 chars) with 10 asterisks
-- [ ] **UTIL-08**: `maskSecret` masks long values showing first 2 and last 4 chars
-- [ ] **UTIL-09**: `loadYaml` loads YAML config file and validates root is a mapping
-- [ ] **UTIL-10**: `loadYaml` throws on missing file with exact error message
+- [x] **UTIL-01**: `coerceType` converts string values to str/int/float/bool with exact Python semantics
+- [x] **UTIL-02**: `coerceType` handles null input by returning null immediately
+- [x] **UTIL-03**: `coerceType` handles YAML auto-converted booleans (true/false → "true"/"false" for type: str)
+- [x] **UTIL-04**: `coerceType` handles YAML auto-converted numbers (8080 → "8080" for type: str)
+- [x] **UTIL-05**: `coerceType` throws on invalid boolean values (e.g., "yes") with exact error message
+- [x] **UTIL-06**: `coerceType` throws on unsupported types (e.g., "date") with exact error message
+- [x] **UTIL-07**: `maskSecret` masks short values (<10 chars) with 10 asterisks
+- [x] **UTIL-08**: `maskSecret` masks long values showing first 2 and last 4 chars
+- [x] **UTIL-09**: `loadYaml` loads YAML config file and validates root is a mapping
+- [x] **UTIL-10**: `loadYaml` throws on missing file with exact error message
 
 ### Environment Parsing
 
