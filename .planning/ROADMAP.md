@@ -269,8 +269,9 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 
 ### Plans
 
-#### Plan 7.1 — Constructor
+#### Plan 7.1 — Constructor ✓ COMPLETE (2026-03-30)
 - Config path resolution (absolute); project root discovery (walk up for `package.json`); load YAML; extract + validate variables and validation sections; parse environments; select active environment from `process.env.APP_ENV`; resolve dotenv path; pre-read dotenv values; resolve secret origin chain (param > `process.env.SECRET_ORIGIN` > .env file > active env > `"local"`); resolve GCP project ID chain; resolve strict mode; `autoLoad` guard
+- Also implemented: `_effectiveSourceContext()`, `load()` (with `_loadNewFormat()` and `_loadOldFormat()`), `get()`, singleton API — all 98 non-GCP tests pass
 
 #### Plan 7.2 — `_effectiveSourceContext()` — per-variable override
 - Default context from active environment; `environment:` pin → use that env's context; `origin:` override → replace origin (clear/restore dotenvPath per origin type); `dotenv_path:` override → replace dotenvPath (resolve relative to project root, or use absolute as-is)
