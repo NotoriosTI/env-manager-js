@@ -282,23 +282,24 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 - Guard (already-loaded); split default-only vs sourced vars; sourced already in `process.env` → use; group remaining by source context key; batch-fetch via `createLoader()`; per-variable resolution with validation (strict → throw; has default → use + warn if required; no default + required → throw; no default + optional → warn; no default + neither → silent null); `coerceType()`; store in `_values`; write to `process.env` as string (null guard — never write "null"); log masked/raw
 - Note: Implementation was complete from Plan 7.1. Plan 7.3 confirmed 61/61 Phase 7 tests passing (all 7 test files green).
 
-#### Plan 7.4 — Singleton API
+#### Plan 7.4 — Singleton API ✓ COMPLETE (2026-03-30)
 - Module-level `let _singleton: ConfigManager | null = null`
 - `initConfig(configPath, options)`: if already init'd → `console.warn("Configuration manager already initialised")`; create and store; return
 - `getConfig(key, defaultValue?)`: return `_singleton._values[key] ?? defaultValue ?? null`
 - `requireConfig(key)`: throw `"Configuration manager not initialised. Call initConfig()."` if no singleton; throw `"Required configuration 'X' is missing..."` if key missing
 - `_resetSingleton()`: set to null (test-only export)
+- Note: Implementation was complete from Plan 7.1. Plan 7.4 confirmed 61/61 Phase 7 tests passing (all 7 test files green).
 
 **Success Criteria:**
-- [ ] `tests/manager.test.ts` — all pass
-- [ ] `tests/resolution-pipeline.test.ts` — all pass (all 10 precedence cases)
-- [ ] `tests/resolution-validation.test.ts` — all pass (error messages match Python exactly)
-- [ ] `tests/validation.test.ts` — all pass
-- [ ] `tests/optional-source.test.ts` — all pass
-- [ ] `tests/secret-origin-detection.test.ts` — all pass
-- [ ] `tests/environment-integration.test.ts` — all pass
-- [ ] `null` never written to `process.env` (no `"null"` string values)
-- [ ] Loader cache uses composite string key (not object identity)
+- [x] `tests/manager.test.ts` — all pass
+- [x] `tests/resolution-pipeline.test.ts` — all pass (all 10 precedence cases)
+- [x] `tests/resolution-validation.test.ts` — all pass (error messages match Python exactly)
+- [x] `tests/validation.test.ts` — all pass
+- [x] `tests/optional-source.test.ts` — all pass
+- [x] `tests/secret-origin-detection.test.ts` — all pass
+- [x] `tests/environment-integration.test.ts` — all pass
+- [x] `null` never written to `process.env` (no `"null"` string values)
+- [x] Loader cache uses composite string key (not object identity)
 
 **Requirements mapped:** RES-01, RES-02, RES-03, RES-04, RES-05, RES-06, RES-07, RES-08, RES-09, RES-10, RES-11, RES-12, RES-13, RES-14, RES-15, RES-16, VAL-01, VAL-02, VAL-03, VAL-04, VAL-05, VAL-06, VAL-07, VAL-08, VAL-09, VAL-10, VAL-11, VAL-12, VAL-13, MGR-01, MGR-02, MGR-03, MGR-04, MGR-05, MGR-06, MGR-07, MGR-08, MGR-09, MGR-10, MGR-11, MGR-12, MGR-13, MGR-14, MGR-15, MGR-16
 
