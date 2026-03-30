@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-30T18:05:00.000Z"
+last_updated: "2026-03-30T18:30:00.000Z"
 progress:
   total_phases: 8
   completed_phases: 5
   total_plans: 21
-  completed_plans: 19
+  completed_plans: 20
 ---
 
 # Project State: env-manager-js
@@ -16,7 +16,7 @@ Last updated: 2026-03-30
 
 ## Current Phase
 
-**Phase 6 — Loaders + Factory** | IN PROGRESS (Plan 6.1 complete)
+**Phase 6 — Loaders + Factory** | IN PROGRESS (Plans 6.1, 6.2 complete)
 
 ## Phase Status
 
@@ -27,15 +27,15 @@ Last updated: 2026-03-30
 | 3 — Write All Tests (TDD First) | Complete | Plans 3.1-3.6 complete; fixtures and end-to-end coverage added, and Vitest discovery confirmed against stub/import failures |
 | 4 — Type Stubs | Complete | Plans 4.1 and 4.2 complete; full stub surface now exists and Vitest fails on `Not implemented` paths |
 | 5 — Core Implementation: utils + environment | Complete | Plans 5.1, 5.2, 5.3 complete; 29 tests passing, typecheck clean |
-| 6 — Loaders + Factory | In Progress | Plan 6.1 complete (LOAD-01–04); Plans 6.2, 6.3 remaining |
+| 6 — Loaders + Factory | In Progress | Plans 6.1, 6.2 complete (LOAD-01–07); Plan 6.3 remaining |
 | 7 — ConfigManager + Singleton | Not started | RES-01–16, VAL-01–13, MGR-01–16 |
 | 8 — Integration Verification + Publish | Not started | PKG-03, PKG-04 |
 
 ## Requirement Coverage
 
 - Total v1 requirements: 68
-- Completed: 24 (PKG-01, PKG-02, UTIL-01–10, ENV-01–12)
-- Remaining: 44
+- Completed: 27 (PKG-01, PKG-02, UTIL-01–10, ENV-01–12, LOAD-05–07)
+- Remaining: 41
 
 ## Key Decisions Locked
 
@@ -87,12 +87,15 @@ Last updated: 2026-03-30
 | 05 | 02 | 3 min | 2 | 1 |
 | 05 | 03 | 1 min | 2 | 0 |
 | 06 | 01 | 5 min | 2 | 1 |
+| 06 | 02 | 25 min | 2 | 1 |
 
 ## Session Continuity
 
-- Stopped at: Completed 06-01-PLAN.md (DotEnvLoader implemented, LOAD-01–04 satisfied)
+- Stopped at: Completed 06-02-PLAN.md (GCPSecretLoader implemented, LOAD-05–07 satisfied)
 - Resume file: None
-- Next: Phase 6.2 -- GCPSecretLoader (LOAD-05–07), then 6.3 -- factory (LOAD-08–09)
+- Next: Phase 6.3 -- factory (LOAD-08–09)
+
+- vitest 4.1.2 `mockReturnValue` + `new` incompatibility: use try/catch factory — `new SecretManagerServiceClient()` throws vitest 4 guard; fallback to calling as plain function returns mockClient. In production, `new` path succeeds.
 
 ---
-*State updated: 2026-03-30 after Plan 6.1 completion (DotEnvLoader implemented; LOAD-01–04 satisfied)*
+*State updated: 2026-03-30 after Plan 6.2 completion (GCPSecretLoader implemented; LOAD-05–07 satisfied)*

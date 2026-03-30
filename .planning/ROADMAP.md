@@ -237,11 +237,11 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 - `findDotenv()`: walk up from cwd looking for `.env`
 - Run `npx vitest run tests/loaders.test.ts` (dotenv describe block) — all pass
 
-#### Plan 6.2 — `src/loaders/gcp.ts` (parallel with 6.1)
-- Constructor: `projectId`, create `SecretManagerServiceClient`, init `_cache: Map<string, string | null>`
+#### Plan 6.2 — `src/loaders/gcp.ts` (parallel with 6.1) ✓ COMPLETE (2026-03-30)
+- Constructor: `projectId`, create `SecretManagerServiceClient` via try/catch factory (vitest 4 compat), init `_cache: Map<string, string | null>`
 - `get(key)`: cache hit → return; call `accessSecretVersion` with `projects/${projectId}/secrets/${key}/versions/latest`; decode `Uint8Array` payload with `Buffer.from(payload).toString('utf-8')`; catch `error.code === 5` → return null + `console.warn`; other errors → throw
 - `getMany(keys)`: iterate `get()`
-- Run `npx vitest run tests/loaders.test.ts` (gcp describe block) — all pass
+- Run `npx vitest run tests/loaders.test.ts` (gcp describe block) — all pass (6/6)
 
 #### Plan 6.3 — `src/factory.ts`
 - `createLoader(origin, gcpProjectId, dotenvPath)`: switch on origin → `new DotEnvLoader(dotenvPath)` or `new GCPSecretLoader(gcpProjectId)`; throw on unknown origin
