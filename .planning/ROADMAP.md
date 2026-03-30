@@ -119,7 +119,7 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 #### Plan 3.3 — Loader tests
 - `tests/loaders.test.ts` — port `test_loaders.py` (DotEnvLoader: 4 cases; GCPSecretLoader: 3 cases with vi.mock)
 
-#### Plan 3.4 — Manager and singleton tests
+#### Plan 3.4 — Manager and singleton tests COMPLETE (2026-03-30)
 - `tests/manager.test.ts` — port `test_manager.py` (local loading, required/optional vars, strict mode, singleton API, debug mode, deferred dotenv error)
 - `tests/validation.test.ts` — port `test_validation.py` (strict constructor param override)
 
