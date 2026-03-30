@@ -129,7 +129,7 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 - `tests/optional-source.test.ts` — port `test_optional_source.py` (default-only vars, source+default combos)
 - `tests/secret-origin-detection.test.ts` — port `test_secret_origin_detection.py`
 
-#### Plan 3.6 — End-to-end test + test fixtures
+#### Plan 3.6 — End-to-end test + test fixtures COMPLETE (2026-03-30)
 - `tests/end-to-end.test.ts` — port `test_end_to_end.py` (multi-source load, skip real GCP test)
 - Port YAML fixtures to `tests/fixtures/`: `test_config.example.yaml`, `prod_config.example.yaml`
 - Run full test suite — confirm ALL tests fail (not zero failures)

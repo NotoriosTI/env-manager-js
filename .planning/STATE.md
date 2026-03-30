@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-30T18:32:44.878Z"
+status: in_progress
+last_updated: "2026-03-30T18:37:13Z"
 progress:
   total_phases: 8
-  completed_phases: 2
+  completed_phases: 3
   total_plans: 13
-  completed_plans: 12
+  completed_plans: 13
 ---
 
 # Project State: env-manager-js
@@ -16,7 +16,7 @@ Last updated: 2026-03-30
 
 ## Current Phase
 
-**Phase 3 — Write All Tests (TDD First)** | IN PROGRESS (5 of 6 plans)
+**Phase 4 — Type Stubs** | NEXT UP
 
 ## Phase Status
 
@@ -24,8 +24,8 @@ Last updated: 2026-03-30
 |-------|--------|-------|
 | 1 — Project Bootstrap | Complete | Plans 1.1, 1.2, 1.3 complete |
 | 2 — Python Analysis & Behavioral Catalog | Complete | All 4 plans done; behavioral catalog at .planning/research/BEHAVIORAL_CATALOG.md |
-| 3 — Write All Tests (TDD First) | In progress | Plans 3.1-3.5 complete; resolution, manager, validation, loader, environment, and utility tests added |
-| 4 — Type Stubs | Not started | Compiler contract |
+| 3 — Write All Tests (TDD First) | Complete | Plans 3.1-3.6 complete; fixtures and end-to-end coverage added, and Vitest discovery confirmed against stub/import failures |
+| 4 — Type Stubs | Next | Compiler contract |
 | 5 — Core Implementation: utils + environment | Not started | UTIL-01–10, ENV-01–12 |
 | 6 — Loaders + Factory | Not started | LOAD-01–09 |
 | 7 — ConfigManager + Singleton | Not started | RES-01–16, VAL-01–13, MGR-01–16 |
@@ -59,6 +59,8 @@ Last updated: 2026-03-30
 | Manager test log assertions use `vi.spyOn(console, 'log'/'warn')` instead of stdout capture | Locked — Plan 3.4 JS test port pattern |
 | New ESM tests must keep explicit `.js` import suffixes | Locked — reinforced in Plan 3.4 |
 | Resolution test ports use `vi.spyOn(factory, 'createLoader')` as the loader seam | Locked — reinforced in Plan 3.5 |
+| Real-GCP end-to-end coverage stays skipped in JS just like Python | Locked — Plan 3.6 |
+| Phase 3 verification accepts missing-module and stub-export failures as long as Vitest discovers the suite | Locked — Plan 3.6 |
 
 ## Open Questions (blocking)
 
@@ -67,9 +69,9 @@ Last updated: 2026-03-30
 
 ## Session Continuity
 
-- Stopped at: Completed 03-05-PLAN.md (resolution pipeline and validation tests added)
+- Stopped at: Completed 03-06-PLAN.md (end-to-end test and YAML fixtures added)
 - Resume file: None
-- Next: Phase 3 Plan 3.6 -- End-to-end test + test fixtures
+- Next: Phase 4 Plan 4.1 -- Core types
 
 ---
-*State updated: 2026-03-30 after Plan 3.5 completion (Phase 3 in progress)*
+*State updated: 2026-03-30 after Plan 3.6 completion (Phase 4 queued)*
