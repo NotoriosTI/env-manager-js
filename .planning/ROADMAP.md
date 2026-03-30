@@ -108,7 +108,7 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 
 ### Plans
 
-#### Plan 3.1 — Utility and masking tests
+#### Plan 3.1 — Utility and masking tests COMPLETE (2026-03-30)
 - `tests/utils.test.ts` — port `test_type_coercion.py` (17 coerceType cases + 3 maskSecret cases)
 - `tests/bool-to-string-coercion.test.ts` — port `test_bool_to_string_coercion.py` (YAML bool/int → str coercion)
 
