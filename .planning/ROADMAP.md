@@ -191,16 +191,20 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 
 ### Plans
 
-#### Plan 5.1 — `src/utils.ts` (parallel with 5.2)
+#### Plan 5.1 — `src/utils.ts` COMPLETE (2026-03-30)
 - `coerceType()`: null passthrough → str branch (bool check before String()) → int/float (parseInt/parseFloat + NaN check) → bool (exact set match) → unsupported type throw
 - `maskSecret()`: length < 10 → 10 asterisks; else → `slice(0,2) + "****" + slice(-4)`
 - `loadYaml()`: `yaml.parse()` with schema selection matching Python PyYAML behavior; file-not-found throw; non-mapping throw
-- Run `npx vitest run tests/utils.test.ts tests/bool-to-string-coercion.test.ts` — all pass
+- Completed in commits `5de46b3` and `d8fc5e6`
 
 #### Plan 5.2 — `src/environment.ts` COMPLETE (2026-03-30)
 - `parseEnvironments()`: no-key → {}; array check → throw; per-env: missing origin → throw; origin lowercase + validate; local defaults; gcp requires project; multiple defaults → throw
 - Completed in commits `9566167` and `ab3bda4`
 - `npx vitest run tests/environment.test.ts` passes
+
+#### Plan 5.3 — Post-parallel validation COMPLETE (2026-03-30)
+- Merged typecheck + quick suite: 29/29 pass (utils + environment)
+- Full regression: 71 stub failures match Phase 4 baseline, no regressions
 
 **Success Criteria:**
 - [ ] `tests/utils.test.ts` — all pass
