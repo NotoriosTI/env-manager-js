@@ -12,5 +12,10 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@google-cloud/secret-manager": "^6.1.1",
+    "dotenv": "^17.3.1",
+    "yaml": "^2.8.3"
+  }
 }
