@@ -14,7 +14,7 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 | 2 | Python Analysis & Behavioral Catalog | (prerequisite) | No |
 | 3 | Write All Tests (TDD First) | PKG-02, UTIL-01–10, ENV-01–12, LOAD-01–09, RES-01–16, VAL-01–13, MGR-01–16 | No |
 | 4 | Type Stubs | (compiler contract) | No |
-| 5 | Core Implementation: utils + environment | UTIL-01–10, ENV-01–12 | utils ∥ environment |
+| 5 | Core Implementation: utils + environment | Complete    | 2026-03-30 |
 | 6 | Loaders + Factory | LOAD-01–09 | dotenv ∥ gcp |
 | 7 | ConfigManager + Singleton | RES-01–16, VAL-01–13, MGR-01–16 | No |
 | 8 | Integration Verification + Publish | PKG-03, PKG-04 | No |
