@@ -1,3 +1,7 @@
+import { readFileSync } from 'fs';
+
+import { parse } from 'yaml';
+
 import type { VariableType } from './types.js';
 
 export function coerceType(
@@ -64,7 +68,24 @@ export function maskSecret(value: string): string {
   return `${value.slice(0, 2)}****${value.slice(-4)}`;
 }
 
-export function loadYaml(path: string): unknown {
-  void path;
-  throw new Error('Not implemented');
+export function loadYaml(path: string): Record<string, unknown> {
+  let text: string;
+
+  try {
+    text = readFileSync(path, 'utf8');
+  } catch (error) {
+    if (error instanceof Error && 'code' in error && error.code === 'ENOENT') {
+      throw new Error(`Configuration file '${path}' does not exist.`);
+    }
+
+    throw error;
+  }
+
+  const parsed = parse(text) ?? {};
+
+  if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+    throw new Error(`Configuration file '${path}' must define a mapping at the root.`);
+  }
+
+  return parsed as Record<string, unknown>;
 }
