@@ -22,4 +22,5 @@ ssl/*.crt
 .playwright-mcp/
 package-lock.json
 
+.planning/
 .claude
