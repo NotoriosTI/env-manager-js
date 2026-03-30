@@ -197,9 +197,10 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 - `loadYaml()`: `yaml.parse()` with schema selection matching Python PyYAML behavior; file-not-found throw; non-mapping throw
 - Run `npx vitest run tests/utils.test.ts tests/bool-to-string-coercion.test.ts` — all pass
 
-#### Plan 5.2 — `src/environment.ts` (parallel with 5.1)
+#### Plan 5.2 — `src/environment.ts` COMPLETE (2026-03-30)
 - `parseEnvironments()`: no-key → {}; array check → throw; per-env: missing origin → throw; origin lowercase + validate; local defaults; gcp requires project; multiple defaults → throw
-- Run `npx vitest run tests/environment.test.ts` — all pass
+- Completed in commits `9566167` and `ab3bda4`
+- `npx vitest run tests/environment.test.ts` passes
 
 **Success Criteria:**
 - [ ] `tests/utils.test.ts` — all pass

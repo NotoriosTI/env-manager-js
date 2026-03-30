@@ -22,18 +22,18 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Environment Parsing
 
-- [ ] **ENV-01**: `parseEnvironments` returns empty object when no environments key
-- [ ] **ENV-02**: `parseEnvironments` parses valid local environment with dotenv_path
-- [ ] **ENV-03**: `parseEnvironments` parses valid GCP environment with gcp_project_id
-- [ ] **ENV-04**: `parseEnvironments` throws on missing origin with env name in message
-- [ ] **ENV-05**: `parseEnvironments` throws on invalid origin with env name in message
-- [ ] **ENV-06**: Local origin defaults dotenv_path to ".env"
-- [ ] **ENV-07**: GCP origin requires gcp_project_id (throws if missing)
-- [ ] **ENV-08**: GCP ignores dotenv_path, local ignores gcp_project_id
-- [ ] **ENV-09**: Origin is normalized to lowercase
-- [ ] **ENV-10**: `default: true` marker works, multiple defaults throws
-- [ ] **ENV-11**: `environments` as array or individual env as string throws
-- [ ] **ENV-12**: Multiple environments parse independently
+- [x] **ENV-01**: `parseEnvironments` returns empty object when no environments key
+- [x] **ENV-02**: `parseEnvironments` parses valid local environment with dotenv_path
+- [x] **ENV-03**: `parseEnvironments` parses valid GCP environment with gcp_project_id
+- [x] **ENV-04**: `parseEnvironments` throws on missing origin with env name in message
+- [x] **ENV-05**: `parseEnvironments` throws on invalid origin with env name in message
+- [x] **ENV-06**: Local origin defaults dotenv_path to ".env"
+- [x] **ENV-07**: GCP origin requires gcp_project_id (throws if missing)
+- [x] **ENV-08**: GCP ignores dotenv_path, local ignores gcp_project_id
+- [x] **ENV-09**: Origin is normalized to lowercase
+- [x] **ENV-10**: `default: true` marker works, multiple defaults throws
+- [x] **ENV-11**: `environments` as array or individual env as string throws
+- [x] **ENV-12**: Multiple environments parse independently
 
 ### Loaders
 
@@ -145,18 +145,18 @@ Requirements for initial release. Each maps to roadmap phases.
 | UTIL-08 | Phase 5 | Not started |
 | UTIL-09 | Phase 5 | Not started |
 | UTIL-10 | Phase 5 | Not started |
-| ENV-01 | Phase 5 | Not started |
-| ENV-02 | Phase 5 | Not started |
-| ENV-03 | Phase 5 | Not started |
-| ENV-04 | Phase 5 | Not started |
-| ENV-05 | Phase 5 | Not started |
-| ENV-06 | Phase 5 | Not started |
-| ENV-07 | Phase 5 | Not started |
-| ENV-08 | Phase 5 | Not started |
-| ENV-09 | Phase 5 | Not started |
-| ENV-10 | Phase 5 | Not started |
-| ENV-11 | Phase 5 | Not started |
-| ENV-12 | Phase 5 | Not started |
+| ENV-01 | Phase 5 | Complete |
+| ENV-02 | Phase 5 | Complete |
+| ENV-03 | Phase 5 | Complete |
+| ENV-04 | Phase 5 | Complete |
+| ENV-05 | Phase 5 | Complete |
+| ENV-06 | Phase 5 | Complete |
+| ENV-07 | Phase 5 | Complete |
+| ENV-08 | Phase 5 | Complete |
+| ENV-09 | Phase 5 | Complete |
+| ENV-10 | Phase 5 | Complete |
+| ENV-11 | Phase 5 | Complete |
+| ENV-12 | Phase 5 | Complete |
 | LOAD-01 | Phase 6 | Not started |
 | LOAD-02 | Phase 6 | Not started |
 | LOAD-03 | Phase 6 | Not started |
