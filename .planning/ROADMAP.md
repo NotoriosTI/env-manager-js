@@ -229,7 +229,7 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 
 ### Plans
 
-#### Plan 6.1 — `src/loaders/dotenv.ts` (parallel with 6.2)
+#### Plan 6.1 — `src/loaders/dotenv.ts` (parallel with 6.2) ✓ COMPLETE (2026-03-30)
 - Constructor: resolve `dotenvPath`; load values via `dotenv.parse(fs.readFileSync())` into `_values`; do NOT call `dotenv.config()`
 - `get(key)`: `process.env[key] ?? null` first (override semantics), then `_values[key] ?? null`
 - `getMany(keys)`: iterate `get()`
