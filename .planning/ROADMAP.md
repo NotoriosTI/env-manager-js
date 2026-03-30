@@ -123,7 +123,7 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 - `tests/manager.test.ts` — port `test_manager.py` (local loading, required/optional vars, strict mode, singleton API, debug mode, deferred dotenv error)
 - `tests/validation.test.ts` — port `test_validation.py` (strict constructor param override)
 
-#### Plan 3.5 — Resolution pipeline and validation tests
+#### Plan 3.5 — Resolution pipeline and validation tests COMPLETE (2026-03-30)
 - `tests/resolution-pipeline.test.ts` — port `test_resolution_pipeline.py` (10 precedence cases)
 - `tests/resolution-validation.test.ts` — port `test_resolution_validation.py` (error messages, schema validation, GCP context)
 - `tests/optional-source.test.ts` — port `test_optional_source.py` (default-only vars, source+default combos)
