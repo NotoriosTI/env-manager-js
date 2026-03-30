@@ -20,6 +20,7 @@ export function parseEnvironments(
   }
 
   const environments: Record<string, EnvironmentConfig> = {};
+  let defaultEnvironmentName: string | null = null;
 
   for (const [name, rawEnvironment] of Object.entries(environmentsValue)) {
     if (!isConfigMap(rawEnvironment)) {
@@ -47,6 +48,16 @@ export function parseEnvironments(
     }
 
     const isDefault = rawEnvironment.default === true;
+
+    if (isDefault) {
+      if (defaultEnvironmentName !== null) {
+        throw new Error(
+          `Multiple default environments configured: '${defaultEnvironmentName}' and '${name}'`,
+        );
+      }
+
+      defaultEnvironmentName = name;
+    }
 
     if (origin === 'local') {
       environments[name] = {
