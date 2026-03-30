@@ -5,7 +5,7 @@ import { join } from 'path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as factory from '../src/factory.js';
-import { getConfig, initConfig, requireConfig } from '../src/manager.js';
+import { ConfigManager, getConfig, initConfig, requireConfig } from '../src/manager.js';
 import { writeConfig, writeEnv, writeRepoConfig } from './helpers.js';
 
 function createTempDir(): string {
