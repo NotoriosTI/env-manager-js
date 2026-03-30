@@ -352,6 +352,36 @@ export class ConfigManager {
     return ctx;
   }
 
+  /**
+   * Validate a single variable definition.
+   * Throws on empty dotenv_path, non-string source, empty environment key.
+   * Also triggers environment/origin validation via _effectiveSourceContext.
+   */
+  private _validateVariableDefinition(varName: string, varDef: VariableDefinition): void {
+    // Empty dotenv_path
+    if (varDef.dotenvPath !== undefined && varDef.dotenvPath !== null) {
+      if (typeof varDef.dotenvPath !== 'string' || varDef.dotenvPath.trim() === '') {
+        throw new Error(`Variable '${varName}': 'dotenv_path' must be a non-empty string.`);
+      }
+    }
+
+    // Non-string source
+    if (varDef.source !== undefined && varDef.source !== null && typeof varDef.source !== 'string') {
+      throw new Error(`Variable '${varName}': 'source' must be a string if provided.`);
+    }
+
+    // Empty environment key
+    if ('environment' in (varDef as Record<string, unknown>)) {
+      const envVal = (varDef as Record<string, unknown>)['environment'];
+      if (envVal !== null && envVal !== undefined && typeof envVal === 'string' && envVal.trim() === '') {
+        throw new Error(`Variable '${varName}': 'environment' must be a non-empty string.`);
+      }
+    }
+
+    // Trigger environment/origin validation
+    this._effectiveSourceContext(varName);
+  }
+
   private _writeProcessEnv(key: string, value: string): void {
     process.env[key] = value;
     _processEnvWrites.add(key);
