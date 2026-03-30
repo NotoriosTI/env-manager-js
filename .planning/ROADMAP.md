@@ -273,8 +273,10 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 - Config path resolution (absolute); project root discovery (walk up for `package.json`); load YAML; extract + validate variables and validation sections; parse environments; select active environment from `process.env.APP_ENV`; resolve dotenv path; pre-read dotenv values; resolve secret origin chain (param > `process.env.SECRET_ORIGIN` > .env file > active env > `"local"`); resolve GCP project ID chain; resolve strict mode; `autoLoad` guard
 - Also implemented: `_effectiveSourceContext()`, `load()` (with `_loadNewFormat()` and `_loadOldFormat()`), `get()`, singleton API — all 98 non-GCP tests pass
 
-#### Plan 7.2 — `_effectiveSourceContext()` — per-variable override
+#### Plan 7.2 — `_effectiveSourceContext()` — per-variable override ✓ COMPLETE (2026-03-30)
 - Default context from active environment; `environment:` pin → use that env's context; `origin:` override → replace origin (clear/restore dotenvPath per origin type); `dotenv_path:` override → replace dotenvPath (resolve relative to project root, or use absolute as-is)
+- Also added `_validateVariableDefinition()` helper method for use in load() pipeline
+- Note: _effectiveSourceContext() was implemented ahead-of-schedule in Plan 7.1; Plan 7.2 confirmed correctness and added the named validation helper
 
 #### Plan 7.3 — `load()` pipeline
 - Guard (already-loaded); split default-only vs sourced vars; sourced already in `process.env` → use; group remaining by source context key; batch-fetch via `createLoader()`; per-variable resolution with validation (strict → throw; has default → use + warn if required; no default + required → throw; no default + optional → warn; no default + neither → silent null); `coerceType()`; store in `_values`; write to `process.env` as string (null guard — never write "null"); log masked/raw
