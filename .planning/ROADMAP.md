@@ -15,7 +15,7 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 | 3 | Write All Tests (TDD First) | PKG-02, UTIL-01–10, ENV-01–12, LOAD-01–09, RES-01–16, VAL-01–13, MGR-01–16 | No |
 | 4 | Type Stubs | (compiler contract) | No |
 | 5 | Core Implementation: utils + environment | Complete    | 2026-03-30 |
-| 6 | Loaders + Factory | LOAD-01–09 | dotenv ∥ gcp |
+| 6 | Loaders + Factory | LOAD-01–09 | dotenv ∥ gcp | Complete (2026-03-30) |
 | 7 | ConfigManager + Singleton | RES-01–16, VAL-01–13, MGR-01–16 | No |
 | 8 | Integration Verification + Publish | PKG-03, PKG-04 | No |
 
@@ -243,10 +243,10 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 - `getMany(keys)`: iterate `get()`
 - Run `npx vitest run tests/loaders.test.ts` (gcp describe block) — all pass (6/6)
 
-#### Plan 6.3 — `src/factory.ts`
+#### Plan 6.3 — `src/factory.ts` ✓ COMPLETE (2026-03-30)
 - `createLoader(origin, gcpProjectId, dotenvPath)`: switch on origin → `new DotEnvLoader(dotenvPath)` or `new GCPSecretLoader(gcpProjectId)`; throw on unknown origin
 - Loader instance caching: `Map<string, SecretLoader>` keyed by `` `${origin}:${gcpProjectId ?? ''}:${dotenvPath ?? ''}` ``
-- Run `npx vitest run tests/loaders.test.ts` — LOAD-08 and LOAD-09 pass
+- Run `npx vitest run tests/loaders.test.ts` — LOAD-08 and LOAD-09 pass (6/6)
 
 **Success Criteria:**
 - [ ] `tests/loaders.test.ts` — all pass (DotEnvLoader + GCPSecretLoader + factory)
