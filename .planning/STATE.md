@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-30T19:43:40.739Z"
+status: in_progress
+last_updated: "2026-03-30T19:48:43Z"
 progress:
   total_phases: 8
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 15
-  completed_plans: 14
+  completed_plans: 15
 ---
 
 # Project State: env-manager-js
@@ -16,7 +16,7 @@ Last updated: 2026-03-30
 
 ## Current Phase
 
-**Phase 4 — Type Stubs** | IN PROGRESS
+**Phase 5 — Core Implementation: utils + environment** | READY TO START
 
 ## Phase Status
 
@@ -25,7 +25,7 @@ Last updated: 2026-03-30
 | 1 — Project Bootstrap | Complete | Plans 1.1, 1.2, 1.3 complete |
 | 2 — Python Analysis & Behavioral Catalog | Complete | All 4 plans done; behavioral catalog at .planning/research/BEHAVIORAL_CATALOG.md |
 | 3 — Write All Tests (TDD First) | Complete | Plans 3.1-3.6 complete; fixtures and end-to-end coverage added, and Vitest discovery confirmed against stub/import failures |
-| 4 — Type Stubs | In progress | Plan 4.1 complete; Plan 4.2 module stubs next |
+| 4 — Type Stubs | Complete | Plans 4.1 and 4.2 complete; full stub surface now exists and Vitest fails on `Not implemented` paths |
 | 5 — Core Implementation: utils + environment | Not started | UTIL-01–10, ENV-01–12 |
 | 6 — Loaders + Factory | Not started | LOAD-01–09 |
 | 7 — ConfigManager + Singleton | Not started | RES-01–16, VAL-01–13, MGR-01–16 |
@@ -62,6 +62,8 @@ Last updated: 2026-03-30
 | Real-GCP end-to-end coverage stays skipped in JS just like Python | Locked — Plan 3.6 |
 | Phase 3 verification accepts missing-module and stub-export failures as long as Vitest discovers the suite | Locked — Plan 3.6 |
 | Shared contracts keep test-visible override keys as `secretOrigin`, `gcpProjectId`, and `dotenvPath` | Locked — Plan 4.1 |
+| Every new runtime stub throws `Not implemented` except `_resetSingleton()`, which stays safe for test setup | Locked — Plan 4.2 |
+| `src/index.ts` now re-exports the full public surface before implementation work begins | Locked — Plan 4.2 |
 
 ## Open Questions (blocking)
 
@@ -70,9 +72,9 @@ Last updated: 2026-03-30
 
 ## Session Continuity
 
-- Stopped at: Completed 04-01-PLAN.md (core type contracts added)
+- Stopped at: Completed 04-02-PLAN.md (module stubs added)
 - Resume file: None
-- Next: Phase 4 Plan 4.2 -- Module stubs
+- Next: Phase 5 Plan 5.1 / 5.2 -- utils and environment implementation
 
 ---
-*State updated: 2026-03-30 after Plan 4.1 completion (Phase 4 in progress)*
+*State updated: 2026-03-30 after Plan 4.2 completion (Phase 4 complete; Phase 5 next)*

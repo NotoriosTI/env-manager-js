@@ -155,11 +155,11 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 
 ### Plans
 
-#### Plan 4.1 — Core types
+#### Plan 4.1 — Core types COMPLETE (2026-03-30)
 - `src/types.ts` — `SecretLoader`, `EnvironmentConfig`, `VariableDefinition`, `ValidationConfig`, `SourceContext`, `ConfigManagerOptions` as defined in PORT_PROMPT.md Phase 3.1
 - All nullable fields use `string | null`, never `string | undefined`
 
-#### Plan 4.2 — Module stubs
+#### Plan 4.2 — Module stubs COMPLETE (2026-03-30)
 - `src/utils.ts` — `coerceType()`, `maskSecret()`, `loadYaml()` stubs with correct signatures
 - `src/environment.ts` — `parseEnvironments()` stub
 - `src/loaders/dotenv.ts` — `DotEnvLoader` class stub implementing `SecretLoader`
