@@ -79,18 +79,18 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 - `tests/fixtures/test_config.example.yaml`, `prod_config.example.yaml`
 - `config_vars.yaml.example`
 
-#### Plan 2.4 — Produce behavioral catalog
-- Written document at `.planning/research/BEHAVIORAL_CATALOG.md`
+#### Plan 2.4 — Produce behavioral catalog COMPLETE (2026-03-30)
+- Written document at `.planning/research/BEHAVIORAL_CATALOG.md` (836 lines)
 - Organized by module: utils, environment, loaders (dotenv, gcp), factory, manager, singleton
-- Each entry: trigger → output/side-effect, edge cases, exact error messages
+- Each entry: trigger -> output/side-effect, edge cases, exact error messages
 - Explicitly document: `APP_ENV` vs `ENVIRONMENT` resolution, YAML 1.1 vs 1.2 schema, gRPC error code shape for NotFound
 
 **Success Criteria:**
-- [ ] `BEHAVIORAL_CATALOG.md` exists with entries for every Python function/method
-- [ ] Every exact error message string is captured (they are asserted in tests)
-- [ ] `APP_ENV` vs `ENVIRONMENT` question resolved with line reference from Python source
-- [ ] YAML schema (1.1 vs 1.2) decision documented
-- [ ] gRPC NotFound error shape documented with exact field names
+- [x] `BEHAVIORAL_CATALOG.md` exists with entries for every Python function/method
+- [x] Every exact error message string is captured (they are asserted in tests)
+- [x] `APP_ENV` vs `ENVIRONMENT` question resolved with line reference from Python source
+- [x] YAML schema (1.1 vs 1.2) decision documented
+- [x] gRPC NotFound error shape documented with exact field names
 
 **Requirements mapped:** (prerequisite for all — no v1 req directly, but PKG-02 depends on it)
 
