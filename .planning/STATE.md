@@ -66,6 +66,7 @@ Progress: [██████████] 100%
 - [Phase 03]: explicitPrivateKey as a DotEnvLoaderOptions field rather than a runtime callback — simpler interface, no closure complexity
 - [Phase 03.1]: Refuse (throw) when DOTENV_PUBLIC_KEY already present — prevents key mismatch from silent re-encryption
 - [Phase 03.1]: Use ESM top-level import for eciesjs in CLI module (not CJS require workaround from synchronous loader)
+- [Post-03.1 bugfix]: Moved inline `require('eciesjs')` in `decryptEcies` to a static top-level import — dynamic require breaks in ESM bundles (Node v24 + tsup ESM output)
 
 ### Quick Tasks Completed
 

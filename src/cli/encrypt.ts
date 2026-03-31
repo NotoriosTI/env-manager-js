@@ -179,10 +179,10 @@ async function main(): Promise<void> {
 
 // Only run main() when this file is the direct entry point (not when imported by tests or library consumers)
 const isMain = process.argv[1] != null && (
-  process.argv[1].endsWith('/encrypt.js') ||
-  process.argv[1].endsWith('/encrypt.ts') ||
-  process.argv[1].endsWith('\\encrypt.js') ||
-  process.argv[1].endsWith('\\encrypt.ts')
+  import.meta.url === `file://${process.argv[1]}` ||
+  // Fallback for symlinked npm bin entries (process.argv[1] is the symlink, not the resolved path)
+  process.argv[1].endsWith('/env-manager-encrypt') ||
+  process.argv[1].endsWith('\\env-manager-encrypt')
 );
 
 if (isMain) {

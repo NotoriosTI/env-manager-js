@@ -553,6 +553,8 @@ try {
 
 > **Current limitation:** non-local origins (`origin: gcp`) with `encrypted_dotenv.enabled: true` throw `NotImplementedError`. Encrypted dotenv is currently only supported for `origin: local`.
 
+> **ESM note:** `eciesjs` is imported as a static ESM import in the loader. If you are bundling your application, ensure `eciesjs` is treated as an external dependency (not inlined) to avoid `Dynamic require` errors at runtime.
+
 ---
 
 ## CLI: Encrypt .env Files

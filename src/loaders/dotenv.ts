@@ -1,6 +1,7 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
+import { decrypt } from 'eciesjs';
 
 import { DecryptionError } from '../errors.js';
 import type { DecryptionIssue, SecretLoader } from '../types.js';
@@ -95,16 +96,9 @@ function resolvePrivateKey(
  * Throws on decryption failure (wrong key, corrupted payload, etc).
  */
 function decryptEcies(cipherB64: string, privateKeyHex: string): string {
-  // eciesjs is listed as a runtime dependency and must be available.
-  // Using require() here because the module is CommonJS-compatible and avoids
-  // async dynamic import in a synchronous context.
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { decrypt } = require('eciesjs') as {
-    decrypt: (sk: Uint8Array | Buffer, data: Uint8Array | Buffer) => Buffer;
-  };
   const cipherBuf = Buffer.from(cipherB64, 'base64');
   const privateKeyBuf = Buffer.from(privateKeyHex, 'hex');
-  return decrypt(privateKeyBuf, cipherBuf).toString('utf8');
+  return Buffer.from(decrypt(privateKeyBuf, cipherBuf)).toString('utf8');
 }
 
 export interface DotEnvLoaderOptions {
