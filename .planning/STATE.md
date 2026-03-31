@@ -1,80 +1,71 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.0
-milestone_name: milestone
-status: Milestone complete
-last_updated: "2026-03-31T12:45:08.008Z"
+milestone: v1.3
+milestone_name: Implementation Backlog
+status: in_progress
+stopped_at: Completed 02-01-PLAN.md
+last_updated: "2026-03-31T15:39:19.235Z"
+last_activity: 2026-03-31 — Completed 02-01 red regression coverage for validation diagnostics
 progress:
-  total_phases: 1
+  total_phases: 6
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 4
+  completed_plans: 3
+  percent: 25
 ---
 
 # Project State: env-manager-js
 
 Last updated: 2026-03-31
 
-## Current Phase
+## Project Reference
 
-**Phase 01: Refactor ConfigManager async API** | COMPLETE
+See: `.planning/PROJECT.md` (updated 2026-03-31)
 
-- Current Plan: 01-02 (complete)
-- Total Plans in Phase: 2
-- Completed Plans: 2 of 2
+**Core value:** Behavior parity with the Python implementation remains the primary value.
+**Current focus:** Phase 02 - Validation Diagnostics
 
-## Milestone Status
+## Current Position
 
-| Milestone | Status | Notes |
-|-----------|--------|-------|
-| v1.0 Initial Release | Complete | Archived to `.planning/milestones/`; runtime and packaging verification complete |
+Phase: 02 of 06 (Validation Diagnostics)
+Plan: 1 of 2 in current phase
+Status: In progress
+Last activity: 2026-03-31 — Completed 02-01 red regression coverage for validation diagnostics
 
-## Requirement Coverage
-
-- Total v1 requirements: 68
-- Completed: 68
-- Remaining: 0
-
-## Current Context
-
-- The live planning surface is now reduced to milestone history plus project-level direction.
-- A fresh `.planning/REQUIREMENTS.md` should be created by `$gsd-new-milestone` when the next milestone starts.
-- The current milestone audit outcome is acceptable as shipped tech debt because the remaining gaps are documentation-only.
-
-## Next
-
-- Start the next milestone with `$gsd-new-milestone`
-- Optionally archive raw phase directories later with `$gsd-cleanup`
-
-### Quick Tasks Completed
-
-| # | Description | Date | Commit | Directory |
-|---|-------------|------|--------|-----------|
-| 260331-7lk | Fix npm deprecation warnings: node-domexception@1.0.0 and glob@10.5.0 that appear on npm install | 2026-03-31 | 6407e35 | [260331-7lk-fix-npm-deprecation-warnings-node-domexc](./quick/260331-7lk-fix-npm-deprecation-warnings-node-domexc/) |
-
-## Decisions
-
-| Phase | Decision | Rationale |
-|-------|----------|-----------|
-| 01-01 | Removed MaybePromise<T> with no backward-compat shim | Not exported in public API (index.ts), so removal has zero consumer impact |
-| 01-01 | autoLoad removed from ConfigManagerOptions | Footgun (unawaited promise); removed per D-04; all callers must use await initConfig() |
-| 01-01 | DotEnvLoader.get/getMany made async; internal logic unchanged | Only async wrapper and return type annotation changed |
-| 01-02 | Removed lazy loader.get() calls from get() | After loader became async, lazy sync fetch is impossible; all loading must happen via await manager.load() |
-| 01-02 | Tests restructured for GCP origin to verify createLoader was called | Local-origin path reads dotenv directly (no createLoader); only GCP origin exercises the createLoader path during load() |
+Progress: [███░░░░░░░] 25%
 
 ## Performance Metrics
 
-| Phase | Plan | Duration | Tasks | Files |
-|-------|------|----------|-------|-------|
-| 01 | 01 | 2 min | 2 | 2 |
-| 01 | 02 | 15 min | 2 | 13 |
+- Total plans completed: 3
+- Total active milestone plans: 1
+- Average duration: 2m for the current milestone
+- Recent trend: Phase 02 execution started with committed red regression coverage
 
 ## Accumulated Context
 
-### Roadmap Evolution
+### Decisions
 
-- Phase 1 added: Refactor ConfigManager async API — Option A (async init, sync get) + Option B (parallel GCP fetches)
-- Phase 1, Plan 01 complete: MaybePromise removed, SecretLoader fully async, DotEnvLoader updated
+- v1.3 phase numbering starts at `02` to preserve the shipped live roadmap history from `Phase 01`.
+- The active milestone covers all six backlog items in one roadmap, sequenced as validation, encryption, validator-agnostic typed retrieval, schema-safe accessors, then logger and dotenv expansion ergonomics.
+- Parity guarantees and opt-in defaults remain explicit success constraints for every phase.
+- Typed validation features should expose a validator-agnostic public API; Zod is the primary documentation/example path, not the compatibility contract.
+- [Phase 02]: Locked aggregate validation expectations through test-only regressions before runtime refactor work.
+- [Phase 02]: Aligned new regression titles with the plan's Vitest filter so targeted red-test verification remains reliable.
+
+### Pending Todos
+
+None captured outside the milestone roadmap.
+
+### Blockers/Concerns
+
+- No implementation blockers identified during roadmap creation.
+- Plan-phase work should preserve existing `null`, `strict`, and `required` contracts while layering typed and encrypted behavior behind opt-in paths.
+
+## Session Continuity
+
+Last session: 2026-03-31T15:39:19.231Z
+Stopped at: Completed 02-01-PLAN.md; next up is 02-02-PLAN.md
+Resume file: None
 
 ---
-*State updated: 2026-03-31 after Phase 01, Plan 02 completion — Phase 01 complete*
+*State updated: 2026-03-31 after executing 02-01-PLAN.md*
