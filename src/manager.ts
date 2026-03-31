@@ -881,6 +881,7 @@ export class ConfigManager {
 export function initConfig(configPath: string, options?: ConfigManagerOptions): ConfigManager {
   if (singleton !== null) {
     console.warn('Configuration manager already initialised. Call _resetSingleton() to reset.');
+    return singleton;
   }
   singleton = new ConfigManager(configPath, options);
   return singleton;
