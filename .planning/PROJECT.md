@@ -2,70 +2,73 @@
 
 ## What This Is
 
-A TypeScript port of the Python `env-manager` library — a configuration manager that loads environment variables from multiple sources (dotenv files, GCP Secret Manager) with type coercion, validation, multi-environment support, and per-variable source overrides. The port must be behavior-identical to the Python version, targeting npm publication.
+A shipped TypeScript port of the Python `env-manager` library for Node.js. The package preserves the Python library's configuration resolution behavior across dotenv files, GCP Secret Manager, validation, type coercion, multi-environment selection, and singleton access patterns.
 
 ## Core Value
 
-Every behavior from the Python `env-manager` must be preserved exactly — same resolution pipeline, same error messages, same edge case handling. If the TypeScript version diverges from Python on any input, that's a bug.
+Behavior parity with the Python implementation remains the primary value. Packaging and ecosystem adaptations are acceptable only when they preserve observable behavior for consumers.
+
+## Current State
+
+- Shipped milestone: **v1.0 Initial Release** on 2026-03-31
+- Runtime status: Typecheck, test suite, build, publint, `attw --pack`, and real-GCP verification all passed at milestone closeout
+- Codebase snapshot: 11 completed phases, 40 completed plans, roughly 4.7k lines across `src/` and `tests/`
 
 ## Requirements
 
 ### Validated
 
-(None yet — ship to validate)
+- ✓ Full TypeScript port of the Python modules required for v1 parity — v1.0
+- ✓ Type coercion, environment parsing, loader behavior, resolution pipeline, validation, and singleton APIs match the documented Python behavior — v1.0
+- ✓ Dotenv and GCP Secret Manager loading paths, including cache and deferred-error behavior, are verified — v1.0
+- ✓ Publish-ready npm package outputs and public API surface are verified — v1.0
+- ✓ Project-root discovery via `package.json` is the accepted Node.js adaptation from the Python source layout — v1.0
 
 ### Active
 
-- [ ] Complete TDD port of all Python modules to TypeScript
-- [ ] Type coercion (str, int, float, bool) with exact Python-matching behavior
-- [ ] DotEnvLoader with process.env override semantics
-- [ ] GCPSecretLoader with caching and error handling
-- [ ] Environment parsing (local/gcp origins, defaults, validation)
-- [ ] ConfigManager with full resolution pipeline
-- [ ] Per-variable source overrides (origin, environment pin, dotenv_path)
-- [ ] Singleton API (initConfig/getConfig/requireConfig)
-- [ ] Strict mode validation
-- [ ] Default-only variables (no source, ignore process.env)
-- [ ] YAML boolean/int auto-conversion handling
-- [ ] Project root discovery via package.json (ecosystem adaptation from pyproject.toml)
-- [ ] Deferred dotenv file errors
-- [ ] Secret masking in logs
-- [ ] Debug mode (unmasked logging)
-- [ ] Publish-ready npm package configuration
+- [ ] Define the next milestone scope with `$gsd-new-milestone`
+- [ ] Decide whether v2 starts with additional cloud providers, developer-experience tooling, or another parity-preserving enhancement set
 
 ### Out of Scope
 
-- New features not in the Python version — this is a behavior-preserving port
-- Performance optimizations beyond what Python does — match behavior first
-- CLI tooling — library only
-- Browser support — Node.js target
+- New features that break Python behavior parity
+- Browser support for the current package architecture
+- Performance-first rewrites that change the observable resolution contract
 
 ## Context
 
-- Python source repo available at `../env-manager/` for reference
-- PORT_PROMPT.md contains the complete behavioral specification including test cases, implementation notes, and 15 documented gotchas
-- TDD methodology: all tests written first (ported from Python test suite), then implementation
-- Tests are immutable once written — fix implementation, not tests
-- The only allowed behavioral change: project root discovery uses `package.json` instead of `pyproject.toml`
-- Python uses `APP_ENV` environment variable for environment selection
+- Python source remains available at `../env-manager/` for future parity checks
+- The planning archive for the shipped milestone lives in `.planning/milestones/`
+- Remaining known debt is documentation debt in older planning artifacts, not a runtime blocker
 
 ## Constraints
 
-- **Methodology**: Strict TDD — all tests before implementation
-- **Behavior parity**: Error messages must match Python format exactly (tests assert message content)
-- **Null semantics**: Use `null` (not `undefined`) for missing values throughout
-- **Type system**: `process.env` values always written as strings
-- **Dependencies**: yaml, dotenv, @google-cloud/secret-manager (runtime); typescript, vitest (dev)
-- **Target**: ES2022, ESM modules
+- Preserve the `null` contract for missing values
+- Preserve exact Python-facing error and warning semantics where tests assert them
+- Keep test execution deterministic for environment-mutating suites
+
+## Next Milestone Goals
+
+- Create fresh milestone requirements before adding new roadmap phases
+- Decide whether the next release is v1.1 hardening or a v2 expansion milestone
+- Keep historical v1.0 artifacts archived instead of growing the live planning files again
 
 ## Key Decisions
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Use `package.json` for root discovery instead of `pyproject.toml` | Necessary ecosystem adaptation for Node.js | — Pending |
-| Use Vitest for testing | Matches PORT_PROMPT.md spec, modern TS test runner | — Pending |
-| Use `null` not `undefined` for missing values | Match Python's `None` semantics consistently | — Pending |
-| Follow TDD with immutable tests | PORT_PROMPT.md methodology — tests are the spec | — Pending |
+| Use `package.json` for root discovery instead of `pyproject.toml` | Required Node.js adaptation while preserving behavior | ✓ Good |
+| Use Vitest with serial file execution for env-mutating suites | Preserves deterministic parity tests in the JS runtime | ✓ Good |
+| Use `null` instead of `undefined` for missing values | Matches Python `None` semantics across the API | ✓ Good |
+| Keep tests immutable once ported | Enforces parity by fixing implementation instead of drifting the spec | ✓ Good |
+| Expose a first-class GCP client seam instead of test-only runtime hacks | Keeps production code clean while preserving loader testability | ✓ Good |
+
+<details>
+<summary>Archived pre-v1.0 framing</summary>
+
+Initial project framing focused on port completion, TDD sequencing, and publish readiness before any feature expansion. That framing is preserved in the v1.0 milestone archive and superseded by the shipped state above.
+
+</details>
 
 ---
-*Last updated: 2026-03-30 after initialization*
+*Last updated: 2026-03-31 after v1.0 milestone completion*
