@@ -5,6 +5,7 @@ import { isAbsolute, join } from 'path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ConfigManager, _resetSingleton, getConfig, initConfig, requireConfig } from '../src/manager.js';
+import { maskSecret } from '../src/utils.js';
 import { writeConfig, writeEnv } from './helpers.js';
 
 const tmpDirs: string[] = [];
@@ -251,6 +252,28 @@ variables:
     new ConfigManager(configPath, { dotenvPath, debug: true });
 
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Loaded DB_PASSWORD: secret123'));
+  });
+
+  it('normal mode logs masked loaded values using maskSecret semantics', () => {
+    const tmpDir = createTempDir();
+    const configPath = writeConfig(
+      tmpDir,
+      `
+variables:
+  DB_PASSWORD:
+    source: DB_PASSWORD
+    type: str
+    required: true
+`,
+    );
+    const rawValue = 'secret-value-1234';
+    const dotenvPath = writeEnv(tmpDir, `DB_PASSWORD=${rawValue}\n`);
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+    new ConfigManager(configPath, { dotenvPath });
+
+    expect(logSpy).toHaveBeenCalledWith(`Loaded DB_PASSWORD: ${maskSecret(rawValue)}`);
+    expect(logSpy).not.toHaveBeenCalledWith(`Loaded DB_PASSWORD: ${rawValue}`);
   });
 
   it('missing dotenv is deferred when process.env has value', () => {
