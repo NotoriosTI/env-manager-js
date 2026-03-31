@@ -358,8 +358,7 @@ All 68 v1 requirements mapped:
 
 | Group | Count | Phases |
 |-------|-------|--------|
-| UTIL (10) | 10 | Phase 5 |
-| ENV (12) | 12 | Phase 5 |
+| UTIL (10) | 10 | 2/6 | In Progress|  | 12 | Phase 5 |
 | LOAD (9) | 9 | Phase 6 |
 | RES (16) | 16 | Phase 7 |
 | VAL (13) | 13 | Phase 7 |
@@ -433,11 +432,11 @@ Plans:
 **Goal:** Close the remaining milestone audit blockers by fixing the manager/GCP integration contract, fully resetting loader-visible singleton state, adding the missing Phase 04 and Phase 08 verification artifacts, and repairing requirement traceability so the milestone audit can be rerun against an honest final repo state.
 **Requirements**: RES-04, PKG-03, PKG-04, LOAD-01–09, RES-05–10, MGR-01, MGR-02, MGR-03, MGR-06–16
 **Depends on:** Phase 9
-**Plans:** 1/6 plans executed
+**Plans:** 2/6 plans executed
 
 Plans:
 - [x] Plan 10.1 — Add Phase 10 regression coverage for manager-driven GCP resolution and reset/cache boundaries
-- [ ] Plan 10.2 — Fix runtime audit blockers in manager/GCP integration and singleton reset lifecycle
+- [x] Plan 10.2 — Fix runtime audit blockers in manager/GCP integration and singleton reset lifecycle
 - [ ] Plan 10.3 — Add the missing Phase 04 verification artifact
 - [ ] Plan 10.4 — Add the missing Phase 08 verification artifact
 - [ ] Plan 10.5 — Repair Phase 06/07 requirement-closure metadata and requirements traceability
@@ -445,5 +444,5 @@ Plans:
 
 ---
 
-*Last updated: 2026-03-31 (after Plan 10.1 completion — failing regressions now pin the async GCP and reset/cache audit gaps)*
+*Last updated: 2026-03-31 (after Plan 10.2 completion — async GCP manager handling and reset/cache lifecycle blockers are fixed and verified)*
 *Author: architect-agent*

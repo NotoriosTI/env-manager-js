@@ -84,7 +84,7 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Manager & Singleton
 
-- [ ] **MGR-01**: ConfigManager loads local .env, coerces types, writes process.env
+- [x] **MGR-01**: ConfigManager loads local .env, coerces types, writes process.env
 - [x] **MGR-02**: Singleton API: initConfig/getConfig/requireConfig work correctly
 - [x] **MGR-03**: Re-init logs warning "Configuration manager already initialised"
 - [ ] **MGR-04**: requireConfig throws when singleton not initialized
@@ -98,8 +98,8 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **MGR-12**: Project root discovery walks up looking for package.json
 - [ ] **MGR-13**: SECRET_ORIGIN and GCP_PROJECT_ID detected from .env file
 - [ ] **MGR-14**: Write-back to process.env always as string
-- [ ] **MGR-15**: Missing active environment dotenv deferred when process.env has value
-- [ ] **MGR-16**: Missing active environment dotenv raises with absolute path when lookup needed
+- [x] **MGR-15**: Missing active environment dotenv deferred when process.env has value
+- [x] **MGR-16**: Missing active environment dotenv raises with absolute path when lookup needed
 
 ### Package & Setup
 
@@ -195,7 +195,7 @@ Requirements for initial release. Each maps to roadmap phases.
 | VAL-11 | Phase 7 | Not started |
 | VAL-12 | Phase 7 | Not started |
 | VAL-13 | Phase 7 | Not started |
-| MGR-01 | Phase 7 | Not started |
+| MGR-01 | Phase 7 | Complete |
 | MGR-02 | Phase 7 | Complete |
 | MGR-03 | Phase 7 | Complete |
 | MGR-04 | Phase 7 | Not started |
@@ -209,8 +209,8 @@ Requirements for initial release. Each maps to roadmap phases.
 | MGR-12 | Phase 7 | Not started |
 | MGR-13 | Phase 7 | Not started |
 | MGR-14 | Phase 7 | Not started |
-| MGR-15 | Phase 7 | Not started |
-| MGR-16 | Phase 7 | Not started |
+| MGR-15 | Phase 7 | Complete |
+| MGR-16 | Phase 7 | Complete |
 | PKG-01 | Phase 1 | Not started |
 | PKG-02 | Phase 3 | Complete |
 | PKG-03 | Phase 8 | Complete |
@@ -223,4 +223,4 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ---
 *Requirements defined: 2026-03-30*
-*Last updated: 2026-03-30 — traceability updated after roadmap creation (all 68 requirements mapped)*
+*Last updated: 2026-03-31 — traceability refreshed after Plan 10.2 runtime audit closure updates*

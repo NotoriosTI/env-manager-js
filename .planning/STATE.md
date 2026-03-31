@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-31T05:12:51.280Z"
-last_activity: 2026-03-31 - Completed Plan 10.1 regression coverage for Phase 10
+last_updated: "2026-03-31T05:20:20.479Z"
+last_activity: 2026-03-31 - Completed Plan 10.2 runtime audit fixes for Phase 10
 progress:
   total_phases: 10
   completed_phases: 9
   total_plans: 37
-  completed_plans: 32
+  completed_plans: 33
 ---
 
 # Project State: env-manager-js
@@ -17,7 +17,7 @@ Last updated: 2026-03-31
 
 ## Current Phase
 
-**Phase 10 — Address milestone audit gaps and verification closure** | IN PROGRESS (Plan 10.1 complete; 5 plans remaining)
+**Phase 10 — Address milestone audit gaps and verification closure** | IN PROGRESS (Plans 10.1 and 10.2 complete; 4 plans remaining)
 
 ## Phase Status
 
@@ -32,7 +32,7 @@ Last updated: 2026-03-31
 | 7 — ConfigManager + Singleton | Complete | All 4 plans done (7.1–7.4); 61/61 Phase 7 tests passing |
 | 8 — Integration Verification + Publish | Complete | Plans 8.1-8.4 complete; tests, publish metadata, public API, build validation, and tarball validation all passed |
 | 9 — Fix singleton re-init state leakage | Complete | Plans 9.1 and 9.2 complete; re-init now reuses the live singleton and full regression verification passed |
-| 10 — Address milestone audit gaps and verification closure | In progress | Plan 10.1 complete; failing regressions now pin async GCP resolution and reset/cache boundaries |
+| 10 — Address milestone audit gaps and verification closure | In progress | Plans 10.1 and 10.2 complete; async GCP manager access and reset/cache audit blockers are closed |
 
 ## Accumulated Context
 
@@ -98,6 +98,8 @@ Last updated: 2026-03-31
 - [Phase 09]: Record the full-suite verification as an explicit empty task commit because task 9-2-02 required evidence, not more code.
 - [Phase 10]: Record Phase 10 audit gaps as failing regressions before runtime fixes.
 - [Phase 10]: Reset lifecycle regressions should prove stale values through observed output, not private cache inspection.
+- [Phase 10]: Keep local manager access synchronous in practice while making async-backed loader paths return Promises instead of coercing unresolved values.
+- [Phase 10]: Route _resetSingleton() through src/factory.ts::_resetLoaderCache() so the supported reset boundary clears shared loader memoization in one place.
 
 ## Performance Metrics
 
@@ -118,12 +120,13 @@ Last updated: 2026-03-31
 | Phase 09 P01 | 3 min | 1 tasks | 1 files |
 | Phase 09 P02 | 1 min | 2 tasks | 1 files |
 | Phase 10 P01 | 4 min | 2 tasks | 3 files |
+| Phase 10 P02 | 5 min | 2 tasks | 4 files |
 
 ## Session Continuity
 
-- Stopped at: Completed 10-01-PLAN.md
+- Stopped at: Completed 10-02-PLAN.md
 - Resume file: None
-- Next: Execute 10-02-PLAN.md
+- Next: Execute 10-03-PLAN.md
 
 - vitest 4.1.2 `mockReturnValue` + `new` incompatibility: use try/catch factory — `new SecretManagerServiceClient()` throws vitest 4 guard; fallback to calling as plain function returns mockClient. In production, `new` path succeeds.
 
@@ -131,7 +134,7 @@ Last updated: 2026-03-31
 | 07 | 02 | ~10min | 2 | 1 |
 
 ---
-*State updated: 2026-03-31 after Plan 10.1 completion (failing regressions now pin the async GCP and reset/cache audit gaps for the next runtime plan)*
+*State updated: 2026-03-31 after Plan 10.2 completion (async GCP manager handling and singleton reset/cache audit blockers are fixed and verified)*
 
 ### Quick Tasks Completed
 
@@ -139,4 +142,4 @@ Last updated: 2026-03-31
 |---|-------------|------|--------|-----------|
 | 1 | Create a Readme file for the project including installation, config, usage, etc | 2026-03-30 | 3467b47 | [1-create-a-readme-file-for-the-project-inc](./quick/1-create-a-readme-file-for-the-project-inc/) |
 
-Last activity: 2026-03-31 - Completed Plan 10.1 regression coverage for Phase 10
+Last activity: 2026-03-31 - Completed Plan 10.2 runtime audit fixes for Phase 10
