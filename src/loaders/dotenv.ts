@@ -83,7 +83,7 @@ export class DotEnvLoader implements SecretLoader {
    * If the file is needed but was explicitly requested and is missing,
    * throw a descriptive error.
    */
-  get(key: string): string | null {
+  async get(key: string): Promise<string | null> {
     // process.env always wins (nullish — preserves empty string)
     if (process.env[key] !== undefined) {
       return process.env[key] as string;
@@ -107,10 +107,10 @@ export class DotEnvLoader implements SecretLoader {
    * Look up multiple keys.
    * Returns a record where missing keys map to null.
    */
-  getMany(keys: readonly string[]): Record<string, string | null> {
+  async getMany(keys: readonly string[]): Promise<Record<string, string | null>> {
     const result: Record<string, string | null> = {};
     for (const key of keys) {
-      result[key] = this.get(key);
+      result[key] = await this.get(key);
     }
     return result;
   }
