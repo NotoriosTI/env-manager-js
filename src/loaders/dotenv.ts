@@ -120,6 +120,12 @@ export interface DotEnvLoaderOptions {
    * When absent, only DOTENV_PRIVATE_KEY and the .env.keys fallback are checked.
    */
   environmentName?: string;
+  /**
+   * Pre-resolved private key hex string.
+   * When present, this key is used directly for decryption, bypassing
+   * the default DOTENV_PRIVATE_KEY chain entirely.
+   */
+  explicitPrivateKey?: string | null;
 }
 
 export class DotEnvLoader implements SecretLoader {
@@ -146,9 +152,16 @@ export class DotEnvLoader implements SecretLoader {
   /** Optional environment name for env-specific private key derivation. */
   private readonly environmentName: string | undefined;
 
+  /**
+   * Pre-resolved private key. When non-null, bypasses the default key-chain
+   * lookup inside _tryDecrypt.
+   */
+  private readonly explicitPrivateKey: string | null;
+
   constructor(dotenvPath?: string | null, options?: DotEnvLoaderOptions) {
     this.encryptedEnabled = options?.encrypted === true;
     this.environmentName = options?.environmentName;
+    this.explicitPrivateKey = options?.explicitPrivateKey ?? null;
 
     if (dotenvPath != null) {
       // Explicit path supplied
@@ -293,7 +306,10 @@ export class DotEnvLoader implements SecretLoader {
   ): { value: string; error: null } | { value: null; error: string } {
     const cipherB64 = rawValue.slice(ENCRYPTED_PREFIX.length);
     const effectivePath = this.dotenvPath ?? process.cwd();
-    const privateKey = resolvePrivateKey(this.environmentName, effectivePath);
+    const privateKey =
+      this.explicitPrivateKey != null
+        ? this.explicitPrivateKey
+        : resolvePrivateKey(this.environmentName, effectivePath);
 
     if (privateKey == null) {
       return { value: null, error: 'No private key found for decryption' };

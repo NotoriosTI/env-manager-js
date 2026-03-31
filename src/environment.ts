@@ -1,4 +1,4 @@
-import type { EnvironmentConfig } from './types.js';
+import type { EncryptedDotenvConfig, EnvironmentConfig, PrivateKeyConfig } from './types.js';
 
 type ConfigMap = Record<string, unknown>;
 
@@ -61,10 +61,36 @@ export function parseEnvironments(
 
     // Parse optional encrypted_dotenv block
     const rawEncrypted = rawEnvironment.encrypted_dotenv;
-    const encryptedDotenv =
-      isConfigMap(rawEncrypted) && rawEncrypted.enabled === true
-        ? { enabled: true }
-        : undefined;
+    let encryptedDotenv: EncryptedDotenvConfig | undefined;
+
+    if (isConfigMap(rawEncrypted) && rawEncrypted.enabled === true) {
+      let privateKey: PrivateKeyConfig | undefined;
+
+      const rawPrivateKey = rawEncrypted.private_key;
+      if (isConfigMap(rawPrivateKey)) {
+        const rawSource = rawPrivateKey.source;
+        const rawSecretOrigin = rawPrivateKey.secret_origin;
+
+        if (typeof rawSource === 'string' && rawSource.length > 0) {
+          const keyOrigin =
+            typeof rawSecretOrigin === 'string' &&
+            (rawSecretOrigin === 'local' || rawSecretOrigin === 'gcp')
+              ? (rawSecretOrigin as 'local' | 'gcp')
+              : 'local';
+
+          privateKey = {
+            source: rawSource,
+            secretOrigin: keyOrigin,
+            dotenvPath:
+              typeof rawPrivateKey.dotenv_path === 'string' ? rawPrivateKey.dotenv_path : null,
+            gcpProjectId:
+              typeof rawPrivateKey.gcp_project_id === 'string' ? rawPrivateKey.gcp_project_id : null,
+          };
+        }
+      }
+
+      encryptedDotenv = { enabled: true, ...(privateKey != null ? { privateKey } : {}) };
+    }
 
     if (origin === 'local') {
       environments[name] = {

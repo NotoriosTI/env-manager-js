@@ -717,9 +717,25 @@ export class ConfigManager {
           if (groupEncryptedEnabled && dotenvPath != null) {
             // Encrypted dotenv mode: delegate to DotEnvLoader.
             // DecryptionError propagates directly (not wrapped in ConfigValidationError).
+            const privateKeyConfig = groupEnvConfig?.encryptedDotenv?.privateKey;
+            let explicitPrivateKey: string | null = null;
+
+            if (privateKeyConfig != null) {
+              // Resolve the dedicated private key before constructing the loader.
+              const keyLoader = createLoader({
+                secretOrigin: privateKeyConfig.secretOrigin,
+                gcpProjectId: privateKeyConfig.gcpProjectId ?? null,
+                dotenvPath: privateKeyConfig.dotenvPath != null
+                  ? resolvePath(privateKeyConfig.dotenvPath, this._projectRoot)
+                  : null,
+              });
+              explicitPrivateKey = await keyLoader.get(privateKeyConfig.source);
+            }
+
             const loader = new DotEnvLoader(dotenvPath, {
               encrypted: true,
               environmentName: groupEnvName,
+              ...(explicitPrivateKey != null ? { explicitPrivateKey } : {}),
             });
             return loader.getMany(needFile.map((i) => i.sourceKey));
           }

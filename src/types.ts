@@ -7,9 +7,31 @@ export interface SecretLoader {
   getMany(keys: readonly string[]): Promise<Record<string, string | null>>;
 }
 
+/**
+ * Configuration for a dedicated private-key source.
+ * When present, the manager fetches the private key from this source before
+ * constructing the encrypted DotEnvLoader, bypassing the default key-chain lookup.
+ */
+export interface PrivateKeyConfig {
+  /** Source key name to look up in the loader. */
+  source: string;
+  /** Whether to fetch from a local dotenv file or GCP Secret Manager. */
+  secretOrigin: SecretOrigin;
+  /** Path to the dotenv file containing the key (only for local origin). */
+  dotenvPath?: string | null;
+  /** GCP project ID to fetch from (only for gcp origin). */
+  gcpProjectId?: string | null;
+}
+
 export interface EncryptedDotenvConfig {
   /** Whether encrypted dotenv support is enabled for this environment. */
   enabled: boolean;
+  /**
+   * Optional dedicated private-key source.
+   * When present, the key is fetched from this source before falling back
+   * to the default DOTENV_PRIVATE_KEY chain.
+   */
+  privateKey?: PrivateKeyConfig;
 }
 
 export interface EnvironmentConfig {
