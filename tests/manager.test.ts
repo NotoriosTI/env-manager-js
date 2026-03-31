@@ -86,6 +86,84 @@ variables:
     );
   });
 
+  it('ConfigValidationError aggregates every strict mode missing required variable from one old-format load attempt', async () => {
+    const tmpDir = createTempDir();
+    const configPath = writeConfig(
+      tmpDir,
+      `
+variables:
+  DB_PASSWORD:
+    source: DB_PASSWORD
+    type: str
+  API_TOKEN:
+    source: API_TOKEN
+    type: str
+`,
+    );
+    const dotenvPath = writeEnv(tmpDir, '');
+
+    const manager = new ConfigManager(configPath, { dotenvPath, strict: true });
+    const error = await manager.load().catch((rejection: unknown) => rejection);
+
+    expect(error).toMatchObject({
+      name: 'ConfigValidationError',
+      issues: [
+        {
+          variableName: 'DB_PASSWORD',
+          issueType: 'missing',
+          sourceKey: 'DB_PASSWORD',
+          message: "Strict mode: variable 'DB_PASSWORD' is missing",
+        },
+        {
+          variableName: 'API_TOKEN',
+          issueType: 'missing',
+          sourceKey: 'API_TOKEN',
+          message: "Strict mode: variable 'API_TOKEN' is missing",
+        },
+      ],
+    });
+  });
+
+  it('ConfigValidationError aggregates old-format missing required and invalid issues without leaking invalid process.env writes', async () => {
+    const tmpDir = createTempDir();
+    const configPath = writeConfig(
+      tmpDir,
+      `
+variables:
+  DB_PASSWORD:
+    source: DB_PASSWORD
+    type: str
+    required: true
+  PORT:
+    source: PORT
+    type: int
+`,
+    );
+    const dotenvPath = writeEnv(tmpDir, 'PORT=not-a-number\n');
+
+    const manager = new ConfigManager(configPath, { dotenvPath });
+    const error = await manager.load().catch((rejection: unknown) => rejection);
+
+    expect(error).toMatchObject({
+      name: 'ConfigValidationError',
+      issues: [
+        {
+          variableName: 'DB_PASSWORD',
+          issueType: 'missing',
+          sourceKey: 'DB_PASSWORD',
+          message: "Required variable 'DB_PASSWORD' not found in source",
+        },
+        {
+          variableName: 'PORT',
+          issueType: 'invalid',
+          sourceKey: 'PORT',
+          message: "Cannot convert 'PORT' value 'not-a-number' to int",
+        },
+      ],
+    });
+    expect(process.env.PORT).toBeUndefined();
+  });
+
   it('optional variable with default is quiet', async () => {
     const tmpDir = createTempDir();
     const configPath = writeConfig(
@@ -125,6 +203,46 @@ variables:
     await expect(manager.load()).rejects.toThrow(
       "Strict mode: variable 'DB_PASSWORD' is missing",
     );
+  });
+
+  it('retry load() on the same manager after a rejected old-format attempt', async () => {
+    const tmpDir = createTempDir();
+    const configPath = writeConfig(
+      tmpDir,
+      `
+variables:
+  DB_PASSWORD:
+    source: DB_PASSWORD
+    type: str
+    required: true
+  PORT:
+    source: PORT
+    type: int
+`,
+    );
+    const dotenvPath = writeEnv(tmpDir, 'PORT=bad-int\n');
+
+    const manager = new ConfigManager(configPath, { dotenvPath });
+
+    await expect(manager.load()).rejects.toMatchObject({
+      name: 'ConfigValidationError',
+      issues: [
+        {
+          variableName: 'DB_PASSWORD',
+          issueType: 'missing',
+        },
+        {
+          variableName: 'PORT',
+          issueType: 'invalid',
+        },
+      ],
+    });
+
+    writeEnv(tmpDir, 'DB_PASSWORD=secret123\nPORT=5432\n');
+
+    await expect(manager.load()).resolves.toBeUndefined();
+    expect(manager.get('DB_PASSWORD')).toBe('secret123');
+    expect(manager.get('PORT')).toBe(5432);
   });
 
   it('singleton API: initConfig, getConfig, requireConfig', async () => {
