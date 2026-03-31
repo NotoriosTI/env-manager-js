@@ -95,6 +95,49 @@ const timeout = getConfig('TIMEOUT') as number;
 
 ---
 
+## Module-Wide Initialization
+
+For apps with multiple modules, initialize once in a dedicated file and let every other module read config synchronously via `getConfig` / `requireConfig`.
+
+**`src/config.ts`** — initialize and export typed accessors:
+
+```ts
+import { initConfig, requireConfig } from '@notoriosti/env-manager';
+
+export const configReady = initConfig('./config.yaml');
+
+export const getApiKey = () => requireConfig('API_KEY') as string;
+export const getPort   = () => requireConfig('PORT') as number;
+```
+
+**`src/main.ts`** — await before starting the app:
+
+```ts
+import { configReady } from './config.js';
+
+await configReady; // singleton is fully loaded from here on
+
+import { startServer } from './server.js';
+startServer();
+```
+
+**`src/server.ts`** — use `getConfig` / `requireConfig` directly, no prop-drilling:
+
+```ts
+import { requireConfig } from '@notoriosti/env-manager';
+
+export function startServer() {
+  const port = requireConfig('PORT') as number;
+  // ...
+}
+```
+
+This mirrors the Python `__init__.py` pattern: one module owns initialization, every other module reads the already-populated singleton.
+
+> **Gotcha:** keep config reads inside functions, not at module top-level. Any `getConfig()` / `requireConfig()` call that runs at import time (before `await configReady`) will throw because the singleton isn't set yet.
+
+---
+
 ## Config File Reference
 
 The YAML config has three top-level sections: `variables`, `environments`, and `validation`.
