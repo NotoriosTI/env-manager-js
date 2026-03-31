@@ -166,6 +166,47 @@ variables:
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Configuration manager already initialised'));
   });
 
+  it('re-init keeps the original singleton instance and loaded state', () => {
+    const firstTmpDir = createTempDir();
+    const firstConfigPath = writeConfig(
+      firstTmpDir,
+      `
+variables:
+  DB_PASSWORD:
+    source: DB_PASSWORD
+    type: str
+    required: true
+`,
+    );
+    const firstDotenvPath = writeEnv(firstTmpDir, 'DB_PASSWORD=first-secret\n');
+
+    const secondTmpDir = createTempDir();
+    const secondConfigPath = writeConfig(
+      secondTmpDir,
+      `
+variables:
+  DB_PASSWORD:
+    source: DB_PASSWORD
+    type: str
+    required: true
+  SECOND_ONLY:
+    source: SECOND_ONLY
+    type: str
+`,
+    );
+    const secondDotenvPath = writeEnv(secondTmpDir, 'DB_PASSWORD=second-secret\nSECOND_ONLY=leaked-value\n');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const firstManager = initConfig(firstConfigPath, { dotenvPath: firstDotenvPath });
+    const secondManager = initConfig(secondConfigPath, { dotenvPath: secondDotenvPath });
+
+    expect(secondManager).toBe(firstManager);
+    expect(getConfig('DB_PASSWORD')).toBe('first-secret');
+    expect(requireConfig('DB_PASSWORD')).toBe('first-secret');
+    expect(process.env.SECOND_ONLY).toBeUndefined();
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Configuration manager already initialised'));
+  });
+
   it('debug mode disables masking in logs', () => {
     const tmpDir = createTempDir();
     const configPath = writeConfig(
