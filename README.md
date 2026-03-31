@@ -15,7 +15,7 @@ A TypeScript configuration manager that loads secrets from local `.env` files or
 ## Installation
 
 ```bash
-npm install env-manager
+npm install @notoriosti/env-manager
 ```
 
 ## Quick Start
