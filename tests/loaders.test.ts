@@ -7,15 +7,14 @@ import { DotEnvLoader } from '../src/loaders/dotenv.js';
 import { GCPSecretLoader } from '../src/loaders/gcp.js';
 import { writeEnv } from './helpers.js';
 
-const { mockClient } = vi.hoisted(() => ({
-  mockClient: {
-    accessSecretVersion: vi.fn(),
-  },
-}));
+// vi.mock('@google-cloud/secret-manager') does not intercept the live CJS binding
+// in Vitest 4 ESM projects. We inject the mock client directly onto each loader
+// instance instead (see GCPSecretLoader describe block below).
+const mockClient = {
+  accessSecretVersion: vi.fn(),
+};
 
-vi.mock('@google-cloud/secret-manager', () => ({
-  SecretManagerServiceClient: vi.fn().mockReturnValue(mockClient),
-}));
+type ClientShape = { client: typeof mockClient };
 
 describe('DotEnvLoader', () => {
   const originalDbPassword = process.env.DB_PASSWORD;
@@ -74,9 +73,17 @@ describe('DotEnvLoader', () => {
   });
 });
 
+// Captured at module load time — beforeEach in setup.ts deletes GCP_PROJECT_ID
+const GCP_PROJECT_ID = process.env.GCP_PROJECT_ID ?? 'my-project';
+
 describe('GCPSecretLoader', () => {
+  let loader: GCPSecretLoader;
+
   beforeEach(() => {
     mockClient.accessSecretVersion.mockReset();
+    loader = new GCPSecretLoader(GCP_PROJECT_ID);
+    // Bypass the broken CJS vi.mock by injecting mockClient directly
+    (loader as unknown as ClientShape).client = mockClient;
   });
 
   afterEach(() => {
@@ -87,8 +94,6 @@ describe('GCPSecretLoader', () => {
     mockClient.accessSecretVersion.mockResolvedValue([
       { payload: { data: Buffer.from('top-secret') } },
     ]);
-
-    const loader = new GCPSecretLoader('my-project');
 
     const val1 = await loader.get('API_KEY');
     const val2 = await loader.get('API_KEY');
@@ -104,7 +109,6 @@ describe('GCPSecretLoader', () => {
     );
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const loader = new GCPSecretLoader('my-project');
     const val = await loader.get('MISSING_KEY');
 
     expect(val).toBeNull();
