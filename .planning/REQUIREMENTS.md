@@ -37,15 +37,15 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ### Loaders
 
-- [ ] **LOAD-01**: DotEnvLoader reads KEY=VALUE from .env file
-- [ ] **LOAD-02**: DotEnvLoader returns null for missing keys
-- [ ] **LOAD-03**: DotEnvLoader getMany returns dict with present and missing keys
-- [ ] **LOAD-04**: process.env overrides .env file values in DotEnvLoader
-- [ ] **LOAD-05**: GCPSecretLoader fetches and decodes UTF-8 secret payload
-- [ ] **LOAD-06**: GCPSecretLoader caches — second get does not call API again
-- [ ] **LOAD-07**: GCPSecretLoader returns null and logs warning for NotFound
-- [ ] **LOAD-08**: Loader factory creates correct loader by origin string
-- [ ] **LOAD-09**: Loader factory caches instances by (origin, gcpProjectId, dotenvPath)
+- [x] **LOAD-01**: DotEnvLoader reads KEY=VALUE from .env file
+- [x] **LOAD-02**: DotEnvLoader returns null for missing keys
+- [x] **LOAD-03**: DotEnvLoader getMany returns dict with present and missing keys
+- [x] **LOAD-04**: process.env overrides .env file values in DotEnvLoader
+- [x] **LOAD-05**: GCPSecretLoader fetches and decodes UTF-8 secret payload
+- [x] **LOAD-06**: GCPSecretLoader caches — second get does not call API again
+- [x] **LOAD-07**: GCPSecretLoader returns null and logs warning for NotFound
+- [x] **LOAD-08**: Loader factory creates correct loader by origin string
+- [x] **LOAD-09**: Loader factory caches instances by (origin, gcpProjectId, dotenvPath)
 
 ### Resolution Pipeline
 
@@ -53,12 +53,12 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **RES-02**: Active environment dotenv used when process.env missing
 - [ ] **RES-03**: Falls back to YAML default after env and dotenv
 - [x] **RES-04**: Per-variable `origin: gcp` override uses GCP loader while active env is local
-- [ ] **RES-05**: process.env beats pinned environment lookup
-- [ ] **RES-06**: Variables without overrides keep active environment behavior
-- [ ] **RES-07**: Per-variable `dotenv_path` override uses project-root-relative path
-- [ ] **RES-08**: Absolute `dotenv_path` loads from that exact file
-- [ ] **RES-09**: Pinned environment without other overrides uses environment defaults
-- [ ] **RES-10**: `origin: local` + `dotenv_path` override independent of active GCP environment
+- [x] **RES-05**: process.env beats pinned environment lookup
+- [x] **RES-06**: Variables without overrides keep active environment behavior
+- [x] **RES-07**: Per-variable `dotenv_path` override uses project-root-relative path
+- [x] **RES-08**: Absolute `dotenv_path` loads from that exact file
+- [x] **RES-09**: Pinned environment without other overrides uses environment defaults
+- [x] **RES-10**: `origin: local` + `dotenv_path` override independent of active GCP environment
 - [ ] **RES-11**: Default-only variables (no source) resolve from YAML without creating a loader
 - [ ] **RES-12**: Default-only variables ignore same-named process.env values
 - [ ] **RES-13**: Variable with source + default uses loader value when present
@@ -89,15 +89,15 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **MGR-03**: Re-init logs warning "Configuration manager already initialised"
 - [ ] **MGR-04**: requireConfig throws when singleton not initialized
 - [ ] **MGR-05**: Debug mode disables masking (logs show raw values)
-- [ ] **MGR-06**: APP_ENV selects active environment
-- [ ] **MGR-07**: APP_ENV unset falls back to default environment
-- [ ] **MGR-08**: APP_ENV=unknown throws with available environments listed
-- [ ] **MGR-09**: No default environment + no APP_ENV → activeEnvironment is null
-- [ ] **MGR-10**: Old format (no environments) works with process.env > dotenv > YAML default
-- [ ] **MGR-11**: Constructor param overrides beat environment config
-- [ ] **MGR-12**: Project root discovery walks up looking for package.json
-- [ ] **MGR-13**: SECRET_ORIGIN and GCP_PROJECT_ID detected from .env file
-- [ ] **MGR-14**: Write-back to process.env always as string
+- [x] **MGR-06**: APP_ENV selects active environment
+- [x] **MGR-07**: APP_ENV unset falls back to default environment
+- [x] **MGR-08**: APP_ENV=unknown throws with available environments listed
+- [x] **MGR-09**: No default environment + no APP_ENV → activeEnvironment is null
+- [x] **MGR-10**: Old format (no environments) works with process.env > dotenv > YAML default
+- [x] **MGR-11**: Constructor param overrides beat environment config
+- [x] **MGR-12**: Project root discovery walks up looking for package.json
+- [x] **MGR-13**: SECRET_ORIGIN and GCP_PROJECT_ID detected from .env file
+- [x] **MGR-14**: Write-back to process.env always as string
 - [x] **MGR-15**: Missing active environment dotenv deferred when process.env has value
 - [x] **MGR-16**: Missing active environment dotenv raises with absolute path when lookup needed
 
