@@ -52,7 +52,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [ ] **RES-01**: process.env beats active environment dotenv
 - [ ] **RES-02**: Active environment dotenv used when process.env missing
 - [ ] **RES-03**: Falls back to YAML default after env and dotenv
-- [ ] **RES-04**: Per-variable `origin: gcp` override uses GCP loader while active env is local
+- [x] **RES-04**: Per-variable `origin: gcp` override uses GCP loader while active env is local
 - [ ] **RES-05**: process.env beats pinned environment lookup
 - [ ] **RES-06**: Variables without overrides keep active environment behavior
 - [ ] **RES-07**: Per-variable `dotenv_path` override uses project-root-relative path
@@ -169,7 +169,7 @@ Requirements for initial release. Each maps to roadmap phases.
 | RES-01 | Phase 7 | Not started |
 | RES-02 | Phase 7 | Not started |
 | RES-03 | Phase 7 | Not started |
-| RES-04 | Phase 7 | Not started |
+| RES-04 | Phase 7 | Complete |
 | RES-05 | Phase 7 | Not started |
 | RES-06 | Phase 7 | Not started |
 | RES-07 | Phase 7 | Not started |

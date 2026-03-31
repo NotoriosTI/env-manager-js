@@ -2,17 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: complete
-last_updated: "2026-03-31T04:38:05.914Z"
-last_activity: "2026-03-31 - Completed 09-02-PLAN.md (singleton re-init now returns the live manager and full regression verification passed)"
-current_phase: "09"
-current_plan: "02"
-total_plans_in_phase: "02"
+status: unknown
+last_updated: "2026-03-31T05:12:51.280Z"
+last_activity: 2026-03-31 - Completed Plan 10.1 regression coverage for Phase 10
 progress:
-  total_phases: 9
+  total_phases: 10
   completed_phases: 9
-  total_plans: 31
-  completed_plans: 31
+  total_plans: 37
+  completed_plans: 32
 ---
 
 # Project State: env-manager-js
@@ -20,7 +17,7 @@ Last updated: 2026-03-31
 
 ## Current Phase
 
-**Phase 9 — Fix singleton re-init state leakage** | COMPLETE (Plans 9.1 and 9.2 complete; singleton re-init state leak fixed)
+**Phase 10 — Address milestone audit gaps and verification closure** | IN PROGRESS (Plan 10.1 complete; 5 plans remaining)
 
 ## Phase Status
 
@@ -35,12 +32,14 @@ Last updated: 2026-03-31
 | 7 — ConfigManager + Singleton | Complete | All 4 plans done (7.1–7.4); 61/61 Phase 7 tests passing |
 | 8 — Integration Verification + Publish | Complete | Plans 8.1-8.4 complete; tests, publish metadata, public API, build validation, and tarball validation all passed |
 | 9 — Fix singleton re-init state leakage | Complete | Plans 9.1 and 9.2 complete; re-init now reuses the live singleton and full regression verification passed |
+| 10 — Address milestone audit gaps and verification closure | In progress | Plan 10.1 complete; failing regressions now pin async GCP resolution and reset/cache boundaries |
 
 ## Accumulated Context
 
 ### Roadmap Evolution
 
 - Phase 9 added: Fix singleton re-init state leakage
+- Phase 10 added: Address milestone audit gaps and verification closure
 
 ## Requirement Coverage
 
@@ -97,6 +96,8 @@ Last updated: 2026-03-31
 - [Phase 09]: Lock the re-init regression through public identity and state assertions instead of constructor spies.
 - [Phase 09]: Keep the existing warning text unchanged and return the live singleton immediately to preserve public test contracts.
 - [Phase 09]: Record the full-suite verification as an explicit empty task commit because task 9-2-02 required evidence, not more code.
+- [Phase 10]: Record Phase 10 audit gaps as failing regressions before runtime fixes.
+- [Phase 10]: Reset lifecycle regressions should prove stale values through observed output, not private cache inspection.
 
 ## Performance Metrics
 
@@ -116,12 +117,13 @@ Last updated: 2026-03-31
 | Phase 08 P04 | 1 min | 1 tasks | 0 files |
 | Phase 09 P01 | 3 min | 1 tasks | 1 files |
 | Phase 09 P02 | 1 min | 2 tasks | 1 files |
+| Phase 10 P01 | 4 min | 2 tasks | 3 files |
 
 ## Session Continuity
 
-- Stopped at: Completed 09-02-PLAN.md
+- Stopped at: Completed 10-01-PLAN.md
 - Resume file: None
-- Next: None - phase complete
+- Next: Execute 10-02-PLAN.md
 
 - vitest 4.1.2 `mockReturnValue` + `new` incompatibility: use try/catch factory — `new SecretManagerServiceClient()` throws vitest 4 guard; fallback to calling as plain function returns mockClient. In production, `new` path succeeds.
 
@@ -129,7 +131,7 @@ Last updated: 2026-03-31
 | 07 | 02 | ~10min | 2 | 1 |
 
 ---
-*State updated: 2026-03-30 after Plan 7.3 completion (load() pipeline confirmed; 61/61 Phase 7 tests passing; 98/101 total)*
+*State updated: 2026-03-31 after Plan 10.1 completion (failing regressions now pin the async GCP and reset/cache audit gaps for the next runtime plan)*
 
 ### Quick Tasks Completed
 
@@ -137,4 +139,4 @@ Last updated: 2026-03-31
 |---|-------------|------|--------|-----------|
 | 1 | Create a Readme file for the project including installation, config, usage, etc | 2026-03-30 | 3467b47 | [1-create-a-readme-file-for-the-project-inc](./quick/1-create-a-readme-file-for-the-project-inc/) |
 
-Last activity: 2026-03-31 - Completed 09-02-PLAN.md (singleton re-init now returns the live manager and full regression verification passed)
+Last activity: 2026-03-31 - Completed Plan 10.1 regression coverage for Phase 10

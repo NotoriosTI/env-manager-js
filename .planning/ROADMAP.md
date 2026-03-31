@@ -428,7 +428,22 @@ Plans:
 - [x] Plan 9.1 — Add singleton re-init regression coverage
 - [x] Plan 9.2 — Fix `initConfig()` singleton reuse and verify targeted/full suite
 
+### Phase 10: Address milestone audit gaps and verification closure
+
+**Goal:** Close the remaining milestone audit blockers by fixing the manager/GCP integration contract, fully resetting loader-visible singleton state, adding the missing Phase 04 and Phase 08 verification artifacts, and repairing requirement traceability so the milestone audit can be rerun against an honest final repo state.
+**Requirements**: RES-04, PKG-03, PKG-04, LOAD-01–09, RES-05–10, MGR-01, MGR-02, MGR-03, MGR-06–16
+**Depends on:** Phase 9
+**Plans:** 1/6 plans executed
+
+Plans:
+- [x] Plan 10.1 — Add Phase 10 regression coverage for manager-driven GCP resolution and reset/cache boundaries
+- [ ] Plan 10.2 — Fix runtime audit blockers in manager/GCP integration and singleton reset lifecycle
+- [ ] Plan 10.3 — Add the missing Phase 04 verification artifact
+- [ ] Plan 10.4 — Add the missing Phase 08 verification artifact
+- [ ] Plan 10.5 — Repair Phase 06/07 requirement-closure metadata and requirements traceability
+- [ ] Plan 10.6 — Correct README singleton wording and rerun the milestone audit
+
 ---
 
-*Last updated: 2026-03-31 (after Plan 9.2 completion — singleton re-init now reuses the live manager and the full suite passes)*
+*Last updated: 2026-03-31 (after Plan 10.1 completion — failing regressions now pin the async GCP and reset/cache audit gaps)*
 *Author: architect-agent*
