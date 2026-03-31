@@ -3,9 +3,9 @@
 **Defined:** 2026-03-31
 **Core Value:** Behavior parity with the Python implementation remains the primary value. Packaging and ecosystem adaptations are acceptable only when they preserve observable behavior for consumers.
 
-## v1 Requirements
+## Milestone 2 Requirements
 
-Requirements for milestone `v1.3 Implementation Backlog`.
+Requirements for milestone `v0.2.0 / Milestone 2`.
 
 ### Validation
 
@@ -15,10 +15,12 @@ Requirements for milestone `v1.3 Implementation Backlog`.
 
 ### Encryption
 
-- [ ] **ENC-01**: User can opt into encrypted `.env` handling per environment configuration without changing behavior for plaintext environments
-- [ ] **ENC-02**: User can load dotenvx-compatible `encrypted:` values from `.env` files when a matching private key is available
-- [ ] **ENC-03**: User receives an exported `DecryptionError` when encrypted values cannot be decrypted because the private key is missing or invalid
-- [ ] **ENC-04**: User can supply decryption keys through `DOTENV_PRIVATE_KEY_<ENV>`, `DOTENV_PRIVATE_KEY`, or a colocated `.env.keys` file in that resolution order
+- [x] **ENC-01**: User can opt into encrypted `.env` handling per environment configuration without changing behavior for plaintext environments
+- [x] **ENC-02**: User can load dotenvx-compatible `encrypted:` values from `.env` files when a matching private key is available
+- [x] **ENC-03**: User receives an exported `DecryptionError` when encrypted values cannot be decrypted because the private key is missing or invalid
+- [x] **ENC-04**: User can supply decryption keys through `DOTENV_PRIVATE_KEY_<ENV>`, `DOTENV_PRIVATE_KEY`, or a colocated `.env.keys` file in that resolution order
+- [x] **ENC-05**: User can configure which secret name should be read for the private decryption key instead of being limited to `DOTENV_PRIVATE_KEY`
+- [x] **ENC-06**: User can load the private decryption key from local dotenv-backed sources or GCP Secret Manager, not only from process environment variables or `.env.keys`
 
 ### Typed Access
 
@@ -35,13 +37,13 @@ Requirements for milestone `v1.3 Implementation Backlog`.
 
 - [ ] **EXP-01**: User can opt into `.env` variable interpolation through `dotenv-expand` without changing the default disabled behavior
 
-## v2 Requirements
+## Future Requirements
 
 Deferred until the current backlog milestone lands.
 
 ### Encryption
 
-- **ENC-05**: User can generate or rotate encrypted `.env` payloads directly through library APIs
+- **ENC-07**: User can generate or rotate encrypted `.env` payloads directly through library APIs
 
 ### Typed Access
 
@@ -53,7 +55,7 @@ Deferred until the current backlog milestone lands.
 
 ## Out of Scope
 
-Explicitly excluded from milestone `v1.3`.
+Explicitly excluded from milestone `v0.2.0 / Milestone 2`.
 
 | Feature | Reason |
 |---------|--------|
@@ -72,10 +74,12 @@ Which phases cover which requirements. Updated during roadmap creation.
 | VAL-01 | Phase 02 | Complete |
 | VAL-02 | Phase 02 | Complete |
 | VAL-03 | Phase 02 | Complete |
-| ENC-01 | Phase 03 | Pending |
-| ENC-02 | Phase 03 | Pending |
-| ENC-03 | Phase 03 | Pending |
-| ENC-04 | Phase 03 | Pending |
+| ENC-01 | Phase 03 | Complete |
+| ENC-02 | Phase 03 | Complete |
+| ENC-03 | Phase 03 | Complete |
+| ENC-04 | Phase 03 | Complete |
+| ENC-05 | Phase 03 | Complete |
+| ENC-06 | Phase 03 | Complete |
 | TYPE-01 | Phase 04 | Pending |
 | TYPE-02 | Phase 04 | Pending |
 | TYPE-03 | Phase 05 | Pending |
@@ -84,10 +88,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXP-01 | Phase 06 | Pending |
 
 **Coverage:**
-- v1 requirements: 13 total
-- Mapped to phases: 13
+- Milestone 2 requirements: 15 total
+- Mapped to phases: 15
 - Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-03-31*
-*Last updated: 2026-03-31 after roadmap creation for milestone v1.3*
+*Last updated: 2026-03-31 after renaming the active milestone to v0.2.0 / Milestone 2*

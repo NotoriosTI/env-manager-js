@@ -4,18 +4,18 @@ Last updated: 2026-03-31
 
 ## Overview
 
-Behavior-preserving TypeScript port of the Python `env-manager` library, now planning milestone `v1.3 Implementation Backlog` around the remaining backlog items that improve validation diagnostics, encrypted dotenv handling, typed access patterns, and runtime ergonomics without changing default behavior.
+Behavior-preserving TypeScript port of the Python `env-manager` library, now planning milestone `v0.2.0 / Milestone 2` around the remaining backlog items that improve validation diagnostics, encrypted dotenv handling, typed access patterns, and runtime ergonomics without changing default behavior.
 
 ## Milestones
 
 - ✅ **v1.0 Initial Release** — Phases 01-11 ([archive](./milestones/v1.0-ROADMAP.md)) — shipped 2026-03-31
 - ✅ **v0.1.1 Post-Launch Housekeeping** — README, package rename, deprecation fixes — shipped 2026-03-31
 - ✅ **v0.1.2 Async API Refactor** — Phase 01 (2 plans) — shipped 2026-03-31
-- 🚧 **v1.3 Implementation Backlog** — Phases 02-06 — in progress
+- 🚧 **v0.2.0 / Milestone 2** — Phases 02-06 — in progress
 
 ## Current State
 
-- Active milestone: **v1.3 Implementation Backlog**
+- Active milestone: **v0.2.0 / Milestone 2**
 - Milestone goal: Ship the six prioritized backlog items while preserving Python parity, `null` semantics, and opt-in defaults
 - Sequence: validation diagnostics first, then encrypted dotenv support, then validator-agnostic typed retrieval, then schema-safe accessors, then logger and interpolation ergonomics
 
@@ -44,18 +44,22 @@ Plans:
 - [x] 02-02-PLAN.md — Export ConfigValidationError and refactor load() to aggregate fatal issues without breaking retry semantics
 
 ### Phase 03: Encrypted Dotenv Support
-**Goal**: Users can opt into encrypted dotenv values with dotenvx-compatible decryption and explicit failure behavior.
+**Goal**: Users can opt into encrypted dotenv values with dotenvx-compatible decryption, configurable private-key lookup, and explicit failure behavior.
 **Depends on**: Phase 02
-**Requirements**: ENC-01, ENC-02, ENC-03, ENC-04
+**Requirements**: ENC-01, ENC-02, ENC-03, ENC-04, ENC-05, ENC-06
 **Success Criteria** (what must be TRUE):
   1. User can enable encrypted dotenv handling per environment and plaintext environments keep their current behavior by default.
   2. User can load dotenvx-compatible `encrypted:` values from `.env` files when a matching private key is available.
   3. User receives an exported `DecryptionError` when encrypted values cannot be decrypted because the private key is missing or invalid.
   4. User can provide decryption keys through `DOTENV_PRIVATE_KEY_<ENV>`, then `DOTENV_PRIVATE_KEY`, then a colocated `.env.keys` file in that resolution order.
-**Plans**: TBD
+  5. User can configure the private-key secret name instead of being limited to `DOTENV_PRIVATE_KEY`.
+  6. User can load the private decryption key from local dotenv-backed sources or GCP Secret Manager in addition to direct process environment injection.
+**Plans**: 3 plans
 
 Plans:
-- [ ] 03-01: TBD
+- [x] 03-01-PLAN.md — Add failing regressions for encrypted dotenv loader behavior, manager opt-in activation, dedicated key sources, and the public decryption contract
+- [ ] 03-02-PLAN.md — Add exported DecryptionError/types and implement dotenvx-compatible loader decryption with lazy private-key lookup
+- [ ] 03-03-PLAN.md — Wire encrypted dotenv config through environment/manager resolution and close the phase with the regression gate
 
 ### Phase 04: Generic Typed Retrieval
 **Goal**: Consumers can opt into typed config reads and validator-backed retrieval without breaking existing untyped access patterns.
@@ -104,7 +108,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 01. Async API Refactor | 2/2 | Complete | 2026-03-31 |
 | 02. Validation Diagnostics | 2/2 | Complete   | 2026-03-31 |
-| 03. Encrypted Dotenv Support | 0/TBD | Not started | - |
+| 03. Encrypted Dotenv Support | 1/3 | In Progress|  |
 | 04. Generic Typed Retrieval | 0/TBD | Not started | - |
 | 05. Schema-Safe Config Access | 0/TBD | Not started | - |
 | 06. Runtime Ergonomics | 0/TBD | Not started | - |
