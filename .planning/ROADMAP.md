@@ -22,7 +22,7 @@ Behavior-preserving TypeScript port of the Python `env-manager` library, now pla
 ## Phases
 
 - [x] **Phase 02: Validation Diagnostics** - Aggregate `load()` validation failures into one exported error without changing existing strictness behavior. (completed 2026-03-31)
-- [ ] **Phase 03: Encrypted Dotenv Support** - Add opt-in dotenvx-compatible encrypted value decryption with explicit key resolution and error typing.
+- [x] **Phase 03: Encrypted Dotenv Support** - Add opt-in dotenvx-compatible encrypted value decryption with explicit key resolution and error typing. (completed 2026-03-31)
 - [ ] **Phase 04: Generic Typed Retrieval** - Add typed `getConfig` and `requireConfig` overloads with optional validator-backed parsing while preserving existing callers.
 - [ ] **Phase 05: Schema-Safe Config Access** - Add `createTypedConfig(schema)` for compile-time key safety on top of a validator-agnostic typed retrieval foundation.
 - [ ] **Phase 06: Runtime Ergonomics** - Add injectable logger support and opt-in dotenv expansion without changing defaults for existing consumers.
@@ -108,7 +108,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 01. Async API Refactor | 2/2 | Complete | 2026-03-31 |
 | 02. Validation Diagnostics | 2/2 | Complete   | 2026-03-31 |
-| 03. Encrypted Dotenv Support | 1/3 | In Progress|  |
+| 03. Encrypted Dotenv Support | 1/3 | Complete    | 2026-03-31 |
 | 04. Generic Typed Retrieval | 0/TBD | Not started | - |
 | 05. Schema-Safe Config Access | 0/TBD | Not started | - |
 | 06. Runtime Ergonomics | 0/TBD | Not started | - |
