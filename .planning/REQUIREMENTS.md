@@ -88,7 +88,7 @@ Requirements for initial release. Each maps to roadmap phases.
 - [x] **MGR-02**: Singleton API: initConfig/getConfig/requireConfig work correctly
 - [x] **MGR-03**: Re-init logs warning "Configuration manager already initialised"
 - [ ] **MGR-04**: requireConfig throws when singleton not initialized
-- [ ] **MGR-05**: Debug mode disables masking (logs show raw values)
+- [x] **MGR-05**: Debug mode disables masking (logs show raw values)
 - [x] **MGR-06**: APP_ENV selects active environment
 - [x] **MGR-07**: APP_ENV unset falls back to default environment
 - [x] **MGR-08**: APP_ENV=unknown throws with available environments listed
@@ -199,7 +199,7 @@ Requirements for initial release. Each maps to roadmap phases.
 | MGR-02 | Phase 7 | Complete |
 | MGR-03 | Phase 7 | Complete |
 | MGR-04 | Phase 7 | Not started |
-| MGR-05 | Phase 7 | Not started |
+| MGR-05 | Phase 7 | Complete |
 | MGR-06 | Phase 7 | Complete |
 | MGR-07 | Phase 7 | Complete |
 | MGR-08 | Phase 7 | Complete |
@@ -223,4 +223,4 @@ Requirements for initial release. Each maps to roadmap phases.
 
 ---
 *Requirements defined: 2026-03-30*
-*Last updated: 2026-03-31 — traceability refreshed after Plan 10.2 runtime audit closure updates*
+*Last updated: 2026-03-31 — traceability refreshed after Plan 11.1 regression coverage updates*

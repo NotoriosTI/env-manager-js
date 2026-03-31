@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: unknown
-last_updated: "2026-03-31T05:39:01.839Z"
-last_activity: 2026-03-31 - Completed Plan 10.6 README audit closeout and reran milestone audit
+last_updated: "2026-03-31T05:59:22.677Z"
+last_activity: 2026-03-31 - Completed Plan 11.1 regression coverage for manager logging and GCP loader seams
 progress:
-  total_phases: 10
+  total_phases: 11
   completed_phases: 10
-  total_plans: 37
-  completed_plans: 37
+  total_plans: 40
+  completed_plans: 38
 ---
 
 # Project State: env-manager-js
@@ -17,7 +17,10 @@ Last updated: 2026-03-31
 
 ## Current Phase
 
-**Phase 10 — Address milestone audit gaps and verification closure** | COMPLETE (All 6 plans complete; milestone audit rerun from the final repo state)
+**Phase 11 — Address code cleanup debt in ConfigManager, GCP loader, and Vitest config** | IN PROGRESS (Plan 11.1 complete; runtime cleanup and Vitest config migration remain)
+
+- Current Plan: 2
+- Total Plans in Phase: 3
 
 ## Phase Status
 
@@ -33,6 +36,7 @@ Last updated: 2026-03-31
 | 8 — Integration Verification + Publish | Complete | Plans 8.1-8.4 complete; tests, publish metadata, public API, build validation, and tarball validation all passed |
 | 9 — Fix singleton re-init state leakage | Complete | Plans 9.1 and 9.2 complete; re-init now reuses the live singleton and full regression verification passed |
 | 10 — Address milestone audit gaps and verification closure | Complete | Plans 10.1-10.6 complete; README singleton wording matches shipped behavior, the Phase 10 verification artifact exists, and the refreshed milestone audit closes the prior blockers with residual tech debt only |
+| 11 — Address code cleanup debt in ConfigManager, GCP loader, and Vitest config | In Progress | Plan 11.1 complete; Plans 11.2-11.3 remain for runtime cleanup and Vitest config migration |
 
 ## Accumulated Context
 
@@ -40,6 +44,7 @@ Last updated: 2026-03-31
 
 - Phase 9 added: Fix singleton re-init state leakage
 - Phase 10 added: Address milestone audit gaps and verification closure
+- Phase 11 added: Address code cleanup debt in ConfigManager, GCP loader, and Vitest config
 
 ## Requirement Coverage
 
@@ -107,6 +112,8 @@ Last updated: 2026-03-31
 - [Phase 10]: Spread Phase 06 and 07 requirement closure metadata across the original summaries so the audit can consume existing artifacts directly.
 - [Phase 10]: Keep Plan 10.5 documentation-only by reconciling summary wording and traceability rows without touching implementation files.
 - [Phase 10]: Treat the release-validation command set as sequential evidence generation; running the commands concurrently produced misleading results in a shared worktree.
+- [Phase 11]: Keep Plan 11.1 runtime-agnostic and allow the new regressions to stay red until Phase 11.2 implements the cleanup behaviors.
+- [Phase 11]: Express the future GCP loader seam in tests through an injected client factory shape instead of private instance field mutation.
 
 ## Performance Metrics
 
@@ -131,12 +138,13 @@ Last updated: 2026-03-31
 | Phase 10 P10.4 | 4 min | 1 tasks | 1 files |
 | Phase 10 P03 | 4 min | 1 tasks | 1 files |
 | Phase 10 P10.5 | 8 min | 2 tasks | 8 files |
+| Phase 11 P01 | 3 min | 2 tasks | 2 files |
 
 ## Session Continuity
 
-- Stopped at: Completed 10-06-PLAN.md
+- Stopped at: Completed 11-01-PLAN.md
 - Resume file: None
-- Next: Milestone closeout decision
+- Next: Execute 11-02-PLAN.md
 
 - vitest 4.1.2 `mockReturnValue` + `new` incompatibility: use try/catch factory — `new SecretManagerServiceClient()` throws vitest 4 guard; fallback to calling as plain function returns mockClient. In production, `new` path succeeds.
 
@@ -144,7 +152,7 @@ Last updated: 2026-03-31
 | 07 | 02 | ~10min | 2 | 1 |
 
 ---
-*State updated: 2026-03-31 after Plan 10.5 completion (Phase 06/07 requirement traceability now matches the corrected runtime and verification evidence)*
+*State updated: 2026-03-31 after Plan 11.1 completion (cleanup regressions are now locked in tests and Phase 11 execution is in progress)*
 
 ### Quick Tasks Completed
 
@@ -152,4 +160,4 @@ Last updated: 2026-03-31
 |---|-------------|------|--------|-----------|
 | 1 | Create a Readme file for the project including installation, config, usage, etc | 2026-03-30 | 3467b47 | [1-create-a-readme-file-for-the-project-inc](./quick/1-create-a-readme-file-for-the-project-inc/) |
 
-Last activity: 2026-03-31 - Completed Plan 10.6 README audit closeout and reran milestone audit
+Last activity: 2026-03-31 - Completed Plan 11.1 regression coverage for manager logging and GCP loader seams

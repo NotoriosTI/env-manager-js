@@ -441,7 +441,19 @@ Plans:
 - [x] Plan 10.5 — Repair Phase 06/07 requirement-closure metadata and requirements traceability
 - [x] Plan 10.6 — Correct README singleton wording and rerun the milestone audit
 
+### Phase 11: Address code cleanup debt in ConfigManager, GCP loader, and Vitest config
+
+**Goal:** Remove the remaining post-audit cleanup debt by restoring masked normal-mode manager logging, replacing the Vitest-specific GCP loader test workaround with a first-class seam, and migrating Vitest away from deprecated single-fork configuration without reintroducing env-state flakes.
+**Requirements**: MGR-05, LOAD-05, LOAD-06, LOAD-07, PKG-01
+**Depends on:** Phase 10
+**Plans:** 1/3 plans executed
+
+Plans:
+- [x] Plan 11.1 — Lock cleanup regressions for manager logging and the GCP loader seam
+- [ ] Plan 11.2 — Refactor ConfigManager logging paths and GCP loader construction
+- [ ] Plan 11.3 — Replace deprecated Vitest single-fork config and rerun verification
+
 ---
 
-*Last updated: 2026-03-31 (after Plan 10.6 completion — milestone audit rerun closes the prior blockers and leaves only documented tech debt)*
+*Last updated: 2026-03-31 (after Plan 11.1 completion — cleanup regressions are locked before runtime refactors proceed)*
 *Author: architect-agent*
