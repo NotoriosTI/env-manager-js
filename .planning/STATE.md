@@ -51,5 +51,11 @@ Last updated: 2026-03-31
 |---|-------------|------|--------|-----------|
 | 260331-7lk | Fix npm deprecation warnings: node-domexception@1.0.0 and glob@10.5.0 that appear on npm install | 2026-03-31 | 6407e35 | [260331-7lk-fix-npm-deprecation-warnings-node-domexc](./quick/260331-7lk-fix-npm-deprecation-warnings-node-domexc/) |
 
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 1 added: Refactor ConfigManager async API — Option A (async init, sync get) + Option B (parallel GCP fetches)
+
 ---
 *State updated: 2026-03-31 after v1.0 milestone completion*

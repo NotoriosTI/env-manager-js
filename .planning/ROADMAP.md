@@ -20,3 +20,14 @@ Behavior-preserving TypeScript port of the Python `env-manager` library, publish
 | Milestone | Phases | Plans | Status | Shipped |
 |-----------|--------|-------|--------|---------|
 | v1.0 Initial Release | 1-11 | 40/40 | Complete | 2026-03-31 |
+
+### Phase 1: Refactor ConfigManager async API: Option A (async init, sync get) + Option B (parallel GCP fetches). Move all async work into initConfig/load() so getConfig() is always synchronous. Parallelize GCPSecretLoader.getMany with Promise.all instead of sequential await.
+
+**Goal:** [To be planned]
+**Requirements**: TBD
+**Depends on:** Phase 0
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (run /gsd:plan-phase 1 to break down)
+

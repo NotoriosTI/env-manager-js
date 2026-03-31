@@ -1,5 +1,18 @@
 # Milestones
 
+## v1.1 Post-Launch Housekeeping (Shipped: 2026-03-31)
+
+**GitHub tag:** v0.1.1
+
+**Key accomplishments:**
+- Created comprehensive README.md covering installation, configuration schema, singleton API, environment selection, secret origin resolution, and full API reference.
+- Renamed package from `env-manager` to `@notoriosti/env-manager` (scoped, public `publishConfig`).
+- Added `package.json` metadata: author, repository URL, homepage.
+- Added npm `overrides` for `rimraf` and `node-domexception` to eliminate transitive deprecation warnings on install.
+- Bumped version `0.1.0 → 0.1.1`.
+
+---
+
 ## v1.0 Initial Release (Shipped: 2026-03-31)
 
 **Phases completed:** 11 phases, 40 plans, 10 tracked tasks
