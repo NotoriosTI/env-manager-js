@@ -26,8 +26,8 @@ Behavior-preserving TypeScript port of the Python `env-manager` library, publish
 **Goal:** Remove `autoLoad` footgun, make `load()` always return `Promise<void>`, and clean up `MaybePromise<T>`/`isPromiseLike` dead code. Ship as v0.1.2.
 **Requirements**: TBD
 **Depends on:** Phase 0
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans executed
 
 Plans:
 - [x] 01-01-PLAN.md — Remove MaybePromise/autoLoad from types.ts; make DotEnvLoader async
-- [ ] 01-02-PLAN.md — Refactor manager.ts load() to always-async; migrate tests; bump to v0.1.2
+- [x] 01-02-PLAN.md — Refactor manager.ts load() to always-async; migrate tests; bump to v0.1.2
