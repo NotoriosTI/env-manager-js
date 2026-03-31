@@ -254,7 +254,7 @@ import { initConfig, getConfig, requireConfig, _resetSingleton } from 'env-manag
 
 #### `initConfig(configPath, options?)`
 
-Create and store a singleton `ConfigManager`. If a singleton already exists, logs a warning and replaces it. Returns the new `ConfigManager` instance.
+Create and store a singleton `ConfigManager`. If a singleton already exists, logs a warning and returns the existing instance instead of replacing it.
 
 #### `getConfig(name?)`
 
