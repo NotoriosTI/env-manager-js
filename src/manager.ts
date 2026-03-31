@@ -13,7 +13,7 @@ import type {
   VariableDefinition,
 } from './types.js';
 import { parseEnvironments } from './environment.js';
-import { createLoader } from './factory.js';
+import { _resetLoaderCache, createLoader } from './factory.js';
 import { coerceType, loadYaml } from './utils.js';
 
 let singleton: ConfigManager | null = null;
@@ -1034,6 +1034,7 @@ export function requireConfig(name?: string): MaybePromise<unknown> {
 
 export function _resetSingleton(): void {
   singleton = null;
+  _resetLoaderCache();
   // Clean up all process.env keys written by ConfigManager instances
   for (const key of _processEnvWrites) {
     delete process.env[key];
