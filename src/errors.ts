@@ -1,6 +1,16 @@
 import type { DecryptionIssue } from './types.js';
 
 /**
+ * Thrown when a feature is not yet implemented for the requested configuration.
+ */
+export class NotImplementedError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'NotImplementedError';
+  }
+}
+
+/**
  * Thrown when one or more `encrypted:` dotenv values cannot be decrypted
  * during a single load attempt.
  *

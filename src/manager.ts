@@ -14,6 +14,7 @@ import type {
   VariableDefinition,
 } from './types.js';
 import { parseEnvironments } from './environment.js';
+import { NotImplementedError } from './errors.js';
 import { _resetLoaderCache, createLoader } from './factory.js';
 import { DotEnvLoader } from './loaders/dotenv.js';
 import { coerceType, loadYaml, maskSecret } from './utils.js';
@@ -713,6 +714,13 @@ export class ConfigManager {
           return Promise.resolve({} as Record<string, string | null>);
         }
 
+        if (groupEncryptedEnabled && secretOrigin !== 'local') {
+          throw new NotImplementedError(
+            `Encrypted dotenv is only supported for local-origin environments. ` +
+            `Environment "${groupEnvName}" has origin "${secretOrigin}".`,
+          );
+        }
+
         if (secretOrigin === 'local') {
           if (groupEncryptedEnabled && dotenvPath != null) {
             // Encrypted dotenv mode: delegate to DotEnvLoader.
@@ -872,7 +880,12 @@ export class ConfigManager {
     if (needLoader.length > 0) {
       const loaderSourceKeys = needLoader.map((i) => i.sourceKey);
 
-      if (this._encryptedDotenvEnabled && secretOrigin === 'local') {
+      if (this._encryptedDotenvEnabled && secretOrigin !== 'local') {
+        throw new NotImplementedError(
+          `Encrypted dotenv is only supported for local-origin environments. ` +
+          `Current secretOrigin is "${secretOrigin}".`,
+        );
+      } else if (this._encryptedDotenvEnabled) {
         // Encrypted old-format: use DotEnvLoader with encrypted mode.
         // Old-format configs have no environment name — only the generic key chain is used.
         // DecryptionError propagates directly (not wrapped in ConfigValidationError).
