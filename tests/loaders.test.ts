@@ -7,14 +7,23 @@ import { DotEnvLoader } from '../src/loaders/dotenv.js';
 import { GCPSecretLoader } from '../src/loaders/gcp.js';
 import { writeEnv } from './helpers.js';
 
-// vi.mock('@google-cloud/secret-manager') does not intercept the live CJS binding
-// in Vitest 4 ESM projects. We inject the mock client directly onto each loader
-// instance instead (see GCPSecretLoader describe block below).
 const mockClient = {
   accessSecretVersion: vi.fn(),
 };
 
-type ClientShape = { client: typeof mockClient };
+type SecretManagerClientLike = typeof mockClient;
+type GCPSecretLoaderCtor = new (
+  gcpProjectId: string,
+  options?: { createClient?: () => SecretManagerClientLike },
+) => GCPSecretLoader;
+
+function createGcpLoader(
+  gcpProjectId: string,
+  createClient: () => SecretManagerClientLike = () => mockClient,
+): GCPSecretLoader {
+  const TestableGCPSecretLoader = GCPSecretLoader as unknown as GCPSecretLoaderCtor;
+  return new TestableGCPSecretLoader(gcpProjectId, { createClient });
+}
 
 describe('DotEnvLoader', () => {
   const originalDbPassword = process.env.DB_PASSWORD;
@@ -77,13 +86,8 @@ describe('DotEnvLoader', () => {
 const GCP_PROJECT_ID = process.env.GCP_PROJECT_ID ?? 'my-project';
 
 describe('GCPSecretLoader', () => {
-  let loader: GCPSecretLoader;
-
   beforeEach(() => {
     mockClient.accessSecretVersion.mockReset();
-    loader = new GCPSecretLoader(GCP_PROJECT_ID);
-    // Bypass the broken CJS vi.mock by injecting mockClient directly
-    (loader as unknown as ClientShape).client = mockClient;
   });
 
   afterEach(() => {
@@ -94,6 +98,7 @@ describe('GCPSecretLoader', () => {
     mockClient.accessSecretVersion.mockResolvedValue([
       { payload: { data: Buffer.from('top-secret') } },
     ]);
+    const loader = createGcpLoader(GCP_PROJECT_ID);
 
     const val1 = await loader.get('API_KEY');
     const val2 = await loader.get('API_KEY');
@@ -108,6 +113,7 @@ describe('GCPSecretLoader', () => {
       Object.assign(new Error('not found'), { code: 5 }),
     );
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+    const loader = createGcpLoader(GCP_PROJECT_ID);
 
     const val = await loader.get('MISSING_KEY');
 
