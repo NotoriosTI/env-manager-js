@@ -332,19 +332,19 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 - Re-export types: `SecretLoader`, `EnvironmentConfig`, `ConfigManagerOptions`
 - Matches Python `__init__.py` exports
 
-#### Plan 8.4 — Build and publish validation
+#### Plan 8.4 — Build and publish validation COMPLETE (2026-03-31)
 - `tsup build` → `dist/` with `index.js` + `index.cjs` + `index.d.ts`
 - `npx publint` — zero warnings
 - `npx are-the-types-wrong` — zero errors
 - Verify `dist/index.js` imports work from a `node --input-type=module` one-liner
 
 **Success Criteria:**
-- [ ] `npx vitest run` — zero failures across all 13 test files
-- [ ] `tests/end-to-end.test.ts` — all pass
-- [ ] `npx publint` — clean (zero warnings/errors)
-- [ ] `npx are-the-types-wrong dist/index.js` — clean
-- [ ] `import { ConfigManager, initConfig, getConfig, requireConfig } from 'env-manager'` resolves correctly in ESM consumer
-- [ ] `dist/` contains both `.js` (ESM) and `.cjs` (CJS) outputs
+- [x] `npx vitest run` — zero failures across all 13 test files
+- [x] `tests/end-to-end.test.ts` — all pass
+- [x] `npx publint` — clean (zero warnings/errors)
+- [x] `npx are-the-types-wrong dist/index.js` — clean
+- [x] `import { ConfigManager, initConfig, getConfig, requireConfig } from 'env-manager'` resolves correctly in ESM consumer
+- [x] `dist/` contains both `.js` (ESM) and `.cjs` (CJS) outputs
 
 **Requirements mapped:** PKG-03, PKG-04
 
@@ -419,5 +419,5 @@ Phase 1 (Bootstrap)
 
 ---
 
-*Last updated: 2026-03-31 (after Plan 8.3 completion — PKG-04 public API surface verified in source and built outputs)*
+*Last updated: 2026-03-31 (after Plan 8.4 completion — publish-ready build, type resolution, runtime entry points, and tarball contents validated)*
 *Author: architect-agent*
