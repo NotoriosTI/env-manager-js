@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v0.2.0
 milestone_name: / Milestone 2
 status: executing
-stopped_at: Completed 03-02-PLAN.md
-last_updated: "2026-03-31T17:09:12.909Z"
+stopped_at: Completed 03-03-PLAN.md
+last_updated: "2026-03-31T17:21:02.379Z"
 last_activity: 2026-03-31
 progress:
   total_phases: 6
@@ -28,7 +28,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-31)
 ## Current Position
 
 Phase: 03 of 06 (Encrypted Dotenv Support)
-Plan: 2 of 3 in current phase
+Plan: 3 of 3 in current phase
 Status: Ready to execute
 Last activity: 2026-03-31
 
@@ -58,6 +58,8 @@ Progress: [███████░░░] 71%
 - [Phase 03]: Used eciesjs as runtime dependency (same library dotenvx uses) rather than hand-rolling secp256k1 ECIES
 - [Phase 03]: DecryptionError defined in src/errors.ts separate from manager.ts to avoid circular imports between loader and manager layers
 - [Phase 03]: Per-environment encrypted_dotenv.enabled stored in EnvironmentConfig so _loadNewFormat can activate encrypted mode per-group
+- [Phase 03]: Reused createLoader for dedicated private-key source resolution instead of a new abstraction
+- [Phase 03]: explicitPrivateKey as a DotEnvLoaderOptions field rather than a runtime callback — simpler interface, no closure complexity
 
 ### Pending Todos
 
@@ -70,8 +72,8 @@ None captured outside the milestone roadmap.
 
 ## Session Continuity
 
-Last session: 2026-03-31T17:09:12.906Z
-Stopped at: Completed 03-02-PLAN.md
+Last session: 2026-03-31T17:21:02.375Z
+Stopped at: Completed 03-03-PLAN.md
 Resume file: None
 
 ---
