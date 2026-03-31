@@ -21,7 +21,7 @@ Behavior-preserving TypeScript port of the Python `env-manager` library, now pla
 
 ## Phases
 
-- [ ] **Phase 02: Validation Diagnostics** - Aggregate `load()` validation failures into one exported error without changing existing strictness behavior.
+- [x] **Phase 02: Validation Diagnostics** - Aggregate `load()` validation failures into one exported error without changing existing strictness behavior. (completed 2026-03-31)
 - [ ] **Phase 03: Encrypted Dotenv Support** - Add opt-in dotenvx-compatible encrypted value decryption with explicit key resolution and error typing.
 - [ ] **Phase 04: Generic Typed Retrieval** - Add typed `getConfig` and `requireConfig` overloads with optional validator-backed parsing while preserving existing callers.
 - [ ] **Phase 05: Schema-Safe Config Access** - Add `createTypedConfig(schema)` for compile-time key safety on top of a validator-agnostic typed retrieval foundation.
@@ -41,7 +41,7 @@ Behavior-preserving TypeScript port of the Python `env-manager` library, now pla
 
 Plans:
 - [x] 02-01-PLAN.md — Add failing regression coverage for aggregate validation diagnostics and failed-load retry behavior
-- [ ] 02-02-PLAN.md — Export ConfigValidationError and refactor load() to aggregate fatal issues without breaking retry semantics
+- [x] 02-02-PLAN.md — Export ConfigValidationError and refactor load() to aggregate fatal issues without breaking retry semantics
 
 ### Phase 03: Encrypted Dotenv Support
 **Goal**: Users can opt into encrypted dotenv values with dotenvx-compatible decryption and explicit failure behavior.
@@ -103,7 +103,7 @@ Plans:
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 01. Async API Refactor | 2/2 | Complete | 2026-03-31 |
-| 02. Validation Diagnostics | 1/2 | In Progress|  |
+| 02. Validation Diagnostics | 2/2 | Complete   | 2026-03-31 |
 | 03. Encrypted Dotenv Support | 0/TBD | Not started | - |
 | 04. Generic Typed Retrieval | 0/TBD | Not started | - |
 | 05. Schema-Safe Config Access | 0/TBD | Not started | - |
