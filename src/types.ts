@@ -7,12 +7,19 @@ export interface SecretLoader {
   getMany(keys: readonly string[]): Promise<Record<string, string | null>>;
 }
 
+export interface EncryptedDotenvConfig {
+  /** Whether encrypted dotenv support is enabled for this environment. */
+  enabled: boolean;
+}
+
 export interface EnvironmentConfig {
   name: string;
   origin: SecretOrigin;
   dotenvPath: string | null;
   gcpProjectId: string | null;
   isDefault: boolean;
+  /** Optional encrypted dotenv configuration for this environment. */
+  encryptedDotenv?: EncryptedDotenvConfig;
 }
 
 export interface VariableDefinition {
@@ -48,6 +55,16 @@ export interface ConfigValidationIssue {
   message: string;
   sourceKey: string;
   context: SourceContext;
+}
+
+/**
+ * Describes a single key that failed ECIES decryption during a load attempt.
+ */
+export interface DecryptionIssue {
+  /** The source key (dotenv variable name) that failed to decrypt. */
+  key: string;
+  /** Human-readable failure reason. */
+  message: string;
 }
 
 export interface ConfigManagerOptions {

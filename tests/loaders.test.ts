@@ -30,7 +30,7 @@ const DOTENVX_PUBLIC_KEY =
 const DOTENVX_PRIVATE_KEY =
   '81dac4d2c42e67a2c6542d3b943a4674a05c4be5e7e5a40a689be7a3bd49a07e';
 const DOTENVX_ENCRYPTED_HELLO =
-  'encrypted:BAZb6wDPFaFeFzq8Ut48oiNFSPtYvJmv4AwVDFVcNKiIcGxrxuRIFGWxZ3xVjxOgOo6w65bWFTpAfbatSz52+VvwDYZ3nFUO828nzovH5ZhsIoxPuPb7K0ZphmNynR7Hxci4a+fB';
+  'encrypted:BEtoMgw9hIeDil0vniI+Owi5vyRbPTN/I2szWSNvTXjql6s68pN1cTTfdy1W1RBEIjIg25IsochNf8YTQ46FjB5yRTbtKfWiQu+jCiqJEmjnMkV+4GgNhphGuRA5FMH/SG45rbSR';
 
 function writeEncryptedEnv(
   tmpDir: string,

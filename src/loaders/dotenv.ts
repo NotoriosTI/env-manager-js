@@ -2,7 +2,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
 
-import type { SecretLoader } from '../types.js';
+import { DecryptionError } from '../errors.js';
+import type { DecryptionIssue, SecretLoader } from '../types.js';
 
 /**
  * Walk upward from `startDir` looking for a `.env` file.
@@ -27,6 +28,100 @@ function findDotenv(startDir: string = process.cwd()): string | null {
   }
 }
 
+const ENCRYPTED_PREFIX = 'encrypted:';
+
+function isEncryptedValue(value: string): boolean {
+  return value.startsWith(ENCRYPTED_PREFIX);
+}
+
+/**
+ * Normalize an environment name to a valid env-var suffix.
+ * e.g. "prod.us-east-1" → "PROD_US_EAST_1"
+ *      "staging.blue"   → "STAGING_BLUE"
+ */
+function normalizeEnvName(name: string): string {
+  return name.toUpperCase().replace(/[^A-Z0-9]+/g, '_');
+}
+
+/**
+ * Resolve the private key for ECIES decryption using the default lookup chain.
+ *
+ * Chain (first hit wins):
+ *   1. DOTENV_PRIVATE_KEY_<NORMALIZED_ENV>  (only when environmentName is non-empty)
+ *   2. DOTENV_PRIVATE_KEY
+ *   3. DOTENV_PRIVATE_KEY entry in colocated .env.keys file
+ *
+ * Old-format (no environmentName): only steps 2 and 3 are checked.
+ */
+function resolvePrivateKey(
+  environmentName: string | undefined,
+  dotenvFilePath: string,
+): string | null {
+  // Step 1: env-specific key (only when environmentName is present)
+  if (environmentName != null && environmentName !== '') {
+    const suffix = normalizeEnvName(environmentName);
+    const envSpecificKey = `DOTENV_PRIVATE_KEY_${suffix}`;
+    if (process.env[envSpecificKey] != null) {
+      return process.env[envSpecificKey]!;
+    }
+  }
+
+  // Step 2: generic key
+  if (process.env.DOTENV_PRIVATE_KEY != null) {
+    return process.env.DOTENV_PRIVATE_KEY;
+  }
+
+  // Step 3: colocated .env.keys file (relative to the actual dotenv file location)
+  const dotenvDir = path.dirname(dotenvFilePath);
+  const keysFilePath = path.join(dotenvDir, '.env.keys');
+  if (fs.existsSync(keysFilePath)) {
+    try {
+      const keysContent = fs.readFileSync(keysFilePath);
+      const keysValues = dotenv.parse(keysContent);
+      if (keysValues.DOTENV_PRIVATE_KEY != null) {
+        return keysValues.DOTENV_PRIVATE_KEY;
+      }
+    } catch {
+      // Silently ignore unreadable .env.keys
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Attempt ECIES decryption of a dotenvx-compatible `encrypted:` base64 payload.
+ *
+ * Throws on decryption failure (wrong key, corrupted payload, etc).
+ */
+function decryptEcies(cipherB64: string, privateKeyHex: string): string {
+  // eciesjs is listed as a runtime dependency and must be available.
+  // Using require() here because the module is CommonJS-compatible and avoids
+  // async dynamic import in a synchronous context.
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { decrypt } = require('eciesjs') as {
+    decrypt: (sk: Uint8Array | Buffer, data: Uint8Array | Buffer) => Buffer;
+  };
+  const cipherBuf = Buffer.from(cipherB64, 'base64');
+  const privateKeyBuf = Buffer.from(privateKeyHex, 'hex');
+  return decrypt(privateKeyBuf, cipherBuf).toString('utf8');
+}
+
+export interface DotEnvLoaderOptions {
+  /**
+   * Enable encrypted dotenv support.
+   * When true, `encrypted:` prefixed values are decrypted on demand.
+   * Plaintext values and files with no encrypted entries are unaffected.
+   */
+  encrypted?: boolean;
+  /**
+   * Environment name used to derive an env-specific private key name.
+   * e.g. "staging.blue" → looks up DOTENV_PRIVATE_KEY_STAGING_BLUE first.
+   * When absent, only DOTENV_PRIVATE_KEY and the .env.keys fallback are checked.
+   */
+  environmentName?: string;
+}
+
 export class DotEnvLoader implements SecretLoader {
   readonly dotenvPath: string | null;
 
@@ -45,7 +140,16 @@ export class DotEnvLoader implements SecretLoader {
    */
   private readonly missingExplicitFile: boolean;
 
-  constructor(dotenvPath?: string | null) {
+  /** Whether encrypted dotenv decryption is enabled. */
+  private readonly encryptedEnabled: boolean;
+
+  /** Optional environment name for env-specific private key derivation. */
+  private readonly environmentName: string | undefined;
+
+  constructor(dotenvPath?: string | null, options?: DotEnvLoaderOptions) {
+    this.encryptedEnabled = options?.encrypted === true;
+    this.environmentName = options?.environmentName;
+
     if (dotenvPath != null) {
       // Explicit path supplied
       this.dotenvPath = dotenvPath;
@@ -80,8 +184,10 @@ export class DotEnvLoader implements SecretLoader {
    * Precedence: process.env > file-backed values > null
    *
    * If `process.env[key]` is defined (even as empty string) it wins.
-   * If the file is needed but was explicitly requested and is missing,
-   * throw a descriptive error.
+   * If the file is needed but was explicitly requested and is missing, throw.
+   *
+   * When encrypted mode is enabled, `encrypted:` prefixed values are decrypted
+   * lazily. A DecryptionError with one issue is thrown when decryption fails.
    */
   async get(key: string): Promise<string | null> {
     // process.env always wins (nullish — preserves empty string)
@@ -100,18 +206,117 @@ export class DotEnvLoader implements SecretLoader {
       return null;
     }
 
-    return this.parsedValues[key] !== undefined ? this.parsedValues[key] : null;
+    const rawValue = this.parsedValues[key] !== undefined ? this.parsedValues[key] : null;
+
+    if (rawValue === null) {
+      return null;
+    }
+
+    if (this.encryptedEnabled && isEncryptedValue(rawValue)) {
+      return this._decryptSingleOrThrow(key, rawValue);
+    }
+
+    return rawValue;
   }
 
   /**
    * Look up multiple keys.
    * Returns a record where missing keys map to null.
+   *
+   * When encrypted mode is enabled, all encrypted values are decrypted.
+   * If any decryption fails, a single DecryptionError is thrown that aggregates
+   * all failed keys for the batch.
    */
   async getMany(keys: readonly string[]): Promise<Record<string, string | null>> {
-    const result: Record<string, string | null> = {};
-    for (const key of keys) {
-      result[key] = await this.get(key);
+    if (!this.encryptedEnabled) {
+      // Fast path: no encryption — delegate to plain get() for each key
+      const result: Record<string, string | null> = {};
+      for (const key of keys) {
+        result[key] = await this.get(key);
+      }
+      return result;
     }
+
+    // Encrypted path: resolve raw values, collect all decryption issues before throwing.
+    const result: Record<string, string | null> = {};
+    const issues: DecryptionIssue[] = [];
+
+    for (const key of keys) {
+      // process.env wins
+      if (process.env[key] !== undefined) {
+        result[key] = process.env[key] as string;
+        continue;
+      }
+
+      if (this.parsedValues === null) {
+        if (this.missingExplicitFile) {
+          throw new Error(`DotEnvLoader: dotenv file not found: ${this.dotenvPath}`);
+        }
+        result[key] = null;
+        continue;
+      }
+
+      const rawValue = this.parsedValues[key] !== undefined ? this.parsedValues[key] : null;
+
+      if (rawValue === null) {
+        result[key] = null;
+        continue;
+      }
+
+      if (isEncryptedValue(rawValue)) {
+        const issue = this._tryDecrypt(key, rawValue);
+        if (issue.error != null) {
+          issues.push({ key, message: issue.error });
+          result[key] = null;
+        } else {
+          result[key] = issue.value!;
+        }
+      } else {
+        result[key] = rawValue;
+      }
+    }
+
+    if (issues.length > 0) {
+      throw new DecryptionError(issues);
+    }
+
     return result;
+  }
+
+  /**
+   * Attempt to decrypt a single encrypted value, returning either the plaintext
+   * or a structured error description (never throws).
+   */
+  private _tryDecrypt(
+    key: string,
+    rawValue: string,
+  ): { value: string; error: null } | { value: null; error: string } {
+    const cipherB64 = rawValue.slice(ENCRYPTED_PREFIX.length);
+    const effectivePath = this.dotenvPath ?? process.cwd();
+    const privateKey = resolvePrivateKey(this.environmentName, effectivePath);
+
+    if (privateKey == null) {
+      return { value: null, error: 'No private key found for decryption' };
+    }
+
+    try {
+      const plaintext = decryptEcies(cipherB64, privateKey);
+      return { value: plaintext, error: null };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      return { value: null, error: message };
+    }
+  }
+
+  /**
+   * Decrypt a single encrypted value, throwing a DecryptionError (with one issue)
+   * on failure. Used by `get()` for single-key lookups.
+   */
+  private _decryptSingleOrThrow(key: string, rawValue: string): string {
+    const result = this._tryDecrypt(key, rawValue);
+    if (result.error != null) {
+      throw new DecryptionError([{ key, message: result.error }]);
+    }
+    return result.value;
   }
 }
