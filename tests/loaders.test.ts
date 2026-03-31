@@ -4,25 +4,18 @@ import { join } from 'path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DotEnvLoader } from '../src/loaders/dotenv.js';
-import { GCPSecretLoader } from '../src/loaders/gcp.js';
+import { GCPSecretLoader, type GCPSecretClient } from '../src/loaders/gcp.js';
 import { writeEnv } from './helpers.js';
 
 const mockClient = {
   accessSecretVersion: vi.fn(),
 };
 
-type SecretManagerClientLike = typeof mockClient;
-type GCPSecretLoaderCtor = new (
-  gcpProjectId: string,
-  options?: { createClient?: () => SecretManagerClientLike },
-) => GCPSecretLoader;
-
 function createGcpLoader(
   gcpProjectId: string,
-  createClient: () => SecretManagerClientLike = () => mockClient,
+  createClient: () => GCPSecretClient = () => mockClient,
 ): GCPSecretLoader {
-  const TestableGCPSecretLoader = GCPSecretLoader as unknown as GCPSecretLoaderCtor;
-  return new TestableGCPSecretLoader(gcpProjectId, { createClient });
+  return new GCPSecretLoader(gcpProjectId, { createClient });
 }
 
 describe('DotEnvLoader', () => {

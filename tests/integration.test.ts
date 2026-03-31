@@ -10,10 +10,9 @@
  *   GCP_PROJECT_ID=<your-project> \
  *   npm test
  *
- * NOTE: ConfigManager._loadNewFormat does not await async loaders, so GCP values
- * cannot be fetched via the standard ConfigManager pipeline. The GCP tests below
- * test GCPSecretLoader directly, and demonstrate the process.env pre-seed pattern
- * for integrating fetched secrets with ConfigManager.
+ * NOTE: ConfigManager now resolves async loaders before returning loaded values.
+ * The GCP tests below still exercise GCPSecretLoader directly, and also cover the
+ * process.env pre-seed pattern because it remains a valid integration path.
  */
 
 import { copyFileSync, mkdtempSync, rmSync } from 'fs';
@@ -515,9 +514,8 @@ describe('integration: real GCP Secret Manager', () => {
   it.skipIf(skipGcp)(
     'ConfigManager reads GCP secrets pre-seeded into process.env with correct types',
     async () => {
-      // ConfigManager._loadNewFormat does not await async loaders.
-      // Recommended pattern: pre-fetch with GCPSecretLoader, seed process.env,
-      // then ConfigManager reads them as its highest-priority source.
+      // Pre-fetch with GCPSecretLoader, seed process.env, then let ConfigManager
+      // consume those values through its highest-priority source.
       const loader = new GCPSecretLoader(GCP_PROJECT);
       const gcpValues = await loader.getMany(GCP_SECRETS);
 

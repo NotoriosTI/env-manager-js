@@ -2,24 +2,28 @@ import { SecretManagerServiceClient } from '@google-cloud/secret-manager';
 
 import type { SecretLoader } from '../types.js';
 
-function createSecretManagerClient(): SecretManagerServiceClient {
-  try {
-    return new SecretManagerServiceClient();
-  } catch {
-    // In test environments using vi.fn().mockReturnValue(), calling with `new`
-    // triggers a vitest 4 guard. Calling as a plain function returns the mock.
-    return (SecretManagerServiceClient as unknown as () => SecretManagerServiceClient)();
-  }
+interface SecretVersionResponse {
+  payload?: {
+    data?: string | Uint8Array | Buffer | null;
+  } | null;
+}
+
+export interface GCPSecretClient {
+  accessSecretVersion(request: { name: string }): Promise<[SecretVersionResponse, ...unknown[]]>;
+}
+
+export interface GCPSecretLoaderOptions {
+  createClient?: () => GCPSecretClient;
 }
 
 export class GCPSecretLoader implements SecretLoader {
   readonly gcpProjectId: string;
-  private readonly client: SecretManagerServiceClient;
+  private readonly client: GCPSecretClient;
   private readonly cache: Map<string, string | null>;
 
-  constructor(gcpProjectId: string) {
+  constructor(gcpProjectId: string, options: GCPSecretLoaderOptions = {}) {
     this.gcpProjectId = gcpProjectId;
-    this.client = createSecretManagerClient();
+    this.client = options.createClient?.() ?? new SecretManagerServiceClient();
     this.cache = new Map();
   }
 
@@ -32,7 +36,7 @@ export class GCPSecretLoader implements SecretLoader {
 
     try {
       const [response] = await this.client.accessSecretVersion({ name });
-      const value = Buffer.from(response.payload!.data as Uint8Array).toString('utf-8');
+      const value = Buffer.from(response.payload?.data ?? '').toString('utf-8');
       this.cache.set(key, value);
       return value;
     } catch (error: unknown) {
