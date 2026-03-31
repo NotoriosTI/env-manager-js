@@ -659,12 +659,11 @@ export class ConfigManager {
     storeLoaderResults(loaderResults);
   }
 
-  get(name: string): MaybePromise<unknown | null> {
+  get(name: string): unknown | null {
     if (!this._loaded) {
-      const loadResult = this.load();
-      if (isPromiseLike(loadResult)) {
-        return loadResult.then(() => this.get(name));
-      }
+      throw new Error(
+        `ConfigManager not loaded. Call \`await initConfig()\` before reading values.`,
+      );
     }
 
     const def = this._variables[name];
@@ -692,29 +691,20 @@ export class ConfigManager {
           const ctxLabel = buildContextLabel(ctx);
           const sourceKey = def.source;
 
-          // For local-origin with per-variable dotenvPath: try to re-fetch (may throw for missing file)
-          // This defers per-variable dotenv missing-file errors to get() time.
+          // For local-origin with per-variable dotenvPath: try to re-fetch synchronously.
+          // DotEnvLoader.get() is always sync, so no async branch needed here.
           if (ctx.secretOrigin === 'local' && def.dotenvPath != null && def.dotenvPath !== '') {
-            // process.env check first (may bypass missing file entirely)
             if (process.env[sourceKey] !== undefined) {
               const envVal = process.env[sourceKey]!;
               return this._finalizeLoadedValue(name, sourceKey, def, envVal) as unknown;
             }
-            // Try to read the file (may throw DotEnvLoader error with file path)
             const loader = createLoader({ secretOrigin: ctx.secretOrigin, gcpProjectId: ctx.gcpProjectId, dotenvPath: ctx.dotenvPath });
-            const result = loader.get(sourceKey); // throws if file missing
-            if (isPromiseLike(result)) {
-              return result.then((resolved) => {
-                if (resolved === null) {
-                  return this._handleMissingLoadedValue(name, def, ctx, sourceKey);
-                }
-                return this._finalizeLoadedValue(name, sourceKey, def, resolved) as unknown;
-              });
-            }
-            if (result !== null) {
+            const result = loader.get(sourceKey);
+            // DotEnvLoader.get() is synchronous; result is string | null (not a Promise)
+            if (result !== null && result !== undefined && typeof (result as unknown as Promise<unknown>).then !== 'function') {
               return this._finalizeLoadedValue(name, sourceKey, def, result) as unknown;
             }
-            // Still null after re-fetch: fall through to required/strict checks
+            // Still null: fall through to required/strict checks
           }
 
           return this._handleMissingLoadedValue(name, def, ctx, sourceKey, ctxLabel);
@@ -733,7 +723,8 @@ export class ConfigManager {
       return cached as unknown;
     }
 
-    // Not in cache: lazy-load
+    // Not in cache: variable defined but not populated during load()
+    // (e.g., required-only with no source/default, or old-format implicit key)
     if (!def) return null;
 
     if (def.source == null) {
@@ -766,37 +757,24 @@ export class ConfigManager {
 
         return this._finalizeLoadedValue(name, sourceKey, def, rawValue) as unknown;
       } else {
-        // NEW FORMAT, no explicit source: use varname as implicit source, call createLoader lazily
+        // NEW FORMAT, no explicit source: check process.env and local loader only.
+        // GCP variables without a source key are not supported for lazy sync fetch;
+        // they should have been loaded during await initConfig().
         const ctx = this._effectiveSourceContext(name);
-        const sourceKey = name; // implicit source = varname
+        const sourceKey = name;
 
         let rawValue: unknown = null;
         if (process.env[sourceKey] !== undefined) {
           rawValue = process.env[sourceKey];
-        } else {
+        } else if (ctx.secretOrigin === 'local') {
           try {
-            const loader = createLoader({
-              secretOrigin: ctx.secretOrigin,
-              gcpProjectId: ctx.gcpProjectId,
-              dotenvPath: ctx.dotenvPath,
-            });
+            const loader = createLoader({ secretOrigin: ctx.secretOrigin, gcpProjectId: ctx.gcpProjectId, dotenvPath: ctx.dotenvPath });
             const result = loader.get(sourceKey);
-            if (isPromiseLike(result)) {
-              return result
-                .then((resolved) => this._finalizeLazyValue(name, sourceKey, def, resolved))
-                .catch(() => {
-                  if (def.default !== undefined) return def.default as unknown;
-                  return null;
-                });
-            }
-            if (result !== null && result !== undefined) {
+            if (result !== null && result !== undefined && typeof (result as unknown as Promise<unknown>).then !== 'function') {
               rawValue = result;
             }
           } catch {
-            // Loader unavailable (test mock without get(), missing file, etc.)
-            // Return null without required throw (loader error ≠ key not found)
-            if (def.default !== undefined) return def.default as unknown;
-            return null;
+            // ignore loader errors; fall through to default/required checks
           }
         }
 
@@ -818,28 +796,19 @@ export class ConfigManager {
       }
     }
 
-    // For new format lazy sourced vars that somehow weren't loaded
+    // New format with explicit source but not in cache (should have been loaded during init).
+    // Check process.env override and local loader; GCP vars are expected in cache after await initConfig().
     const ctx = this._effectiveSourceContext(name);
     const sourceKey = def.source;
 
-    // Check process.env first
     let rawValue: unknown = null;
     if (process.env[sourceKey] !== undefined) {
       rawValue = process.env[sourceKey];
-    } else {
+    } else if (ctx.secretOrigin === 'local') {
       try {
-        const loader = createLoader({
-          secretOrigin: ctx.secretOrigin,
-          gcpProjectId: ctx.gcpProjectId,
-          dotenvPath: ctx.dotenvPath,
-        });
+        const loader = createLoader({ secretOrigin: ctx.secretOrigin, gcpProjectId: ctx.gcpProjectId, dotenvPath: ctx.dotenvPath });
         const result = loader.get(sourceKey);
-        if (isPromiseLike(result)) {
-          return result
-            .then((resolved) => this._finalizeLazyValue(name, sourceKey, def, resolved, ctx))
-            .catch(() => this._handleMissingLazyValue(name, def, ctx, sourceKey));
-        }
-        if (result !== null && result !== undefined) {
+        if (result !== null && result !== undefined && typeof (result as unknown as Promise<unknown>).then !== 'function') {
           rawValue = result;
         }
       } catch {
@@ -905,68 +874,22 @@ export class ConfigManager {
     return null;
   }
 
-  private _handleMissingLazyValue(
-    name: string,
-    def: VariableDefinition,
-    ctx: SourceContext,
-    sourceKey: string,
-  ): unknown | null {
-    if (def.default !== undefined) {
-      return def.default as unknown;
-    }
-
-    const ctxLabel = buildContextLabel(ctx);
-    if (this._strict) {
-      throw new Error(
-        `Strict mode: variable '${name}' is missing from source '${sourceKey}' in ${ctxLabel}.`,
-      );
-    }
-    if (def.required === true) {
-      throw new Error(
-        `Required variable '${name}' not found in source '${sourceKey}' for ${ctxLabel}.`,
-      );
-    }
-    if (def.required === false) {
-      console.warn(
-        `Optional variable '${name}' resolved to None because source '${sourceKey}' was unavailable in ${ctxLabel}.`,
-      );
-    }
-    return null;
-  }
-
-  private _finalizeLazyValue(
-    name: string,
-    sourceKey: string,
-    def: VariableDefinition,
-    rawValue: unknown,
-    ctx?: SourceContext,
-  ): unknown | null {
-    let value = rawValue;
-    if (value === null || value === undefined) {
-      if (ctx !== undefined) {
-        return this._handleMissingLazyValue(name, def, ctx, sourceKey);
-      }
-      if (def.default !== undefined) {
-        value = def.default;
-      } else {
-        return null;
-      }
-    }
-
-    return this._finalizeLoadedValue(name, sourceKey, def, value) as unknown;
-  }
 }
 
-export function initConfig(configPath: string, options?: ConfigManagerOptions): ConfigManager {
+export async function initConfig(
+  configPath: string,
+  options?: ConfigManagerOptions,
+): Promise<ConfigManager> {
   if (singleton !== null) {
     console.warn('Configuration manager already initialised. Call _resetSingleton() to reset.');
     return singleton;
   }
-  singleton = new ConfigManager(configPath, options);
+  singleton = new ConfigManager(configPath, { ...options, autoLoad: false });
+  await singleton.load();
   return singleton;
 }
 
-export function getConfig(name?: string): MaybePromise<unknown | null> {
+export function getConfig(name?: string): unknown | null | ConfigManager {
   if (singleton === null) {
     return null;
   }
@@ -976,7 +899,7 @@ export function getConfig(name?: string): MaybePromise<unknown | null> {
   return singleton.get(name);
 }
 
-export function requireConfig(name?: string): MaybePromise<unknown> {
+export function requireConfig(name?: string): unknown | ConfigManager {
   if (singleton === null) {
     throw new Error('Configuration manager not initialised. Call initConfig().');
   }
@@ -984,14 +907,6 @@ export function requireConfig(name?: string): MaybePromise<unknown> {
     return singleton;
   }
   const value = singleton.get(name);
-  if (isPromiseLike(value)) {
-    return value.then((resolved) => {
-      if (resolved === null || resolved === undefined) {
-        throw new Error(`Required configuration '${name}' is missing`);
-      }
-      return resolved;
-    });
-  }
   if (value === null || value === undefined) {
     throw new Error(`Required configuration '${name}' is missing`);
   }

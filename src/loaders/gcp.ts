@@ -54,10 +54,7 @@ export class GCPSecretLoader implements SecretLoader {
   }
 
   async getMany(keys: readonly string[]): Promise<Record<string, string | null>> {
-    const result: Record<string, string | null> = {};
-    for (const key of keys) {
-      result[key] = await this.get(key);
-    }
-    return result;
+    const pairs = await Promise.all(keys.map(async (k) => [k, await this.get(k)] as const));
+    return Object.fromEntries(pairs);
   }
 }
