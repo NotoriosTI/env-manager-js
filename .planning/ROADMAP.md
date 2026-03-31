@@ -417,7 +417,18 @@ Phase 1 (Bootstrap)
 - [x] Which YAML schema does PyYAML use for `yes`/`no` boolean parsing — 1.1 or 1.2? RESOLVED: All fixtures use YAML 1.2 constructs only (true/false, no yes/no). `yaml` npm default schema handles everything.
 - [ ] Is `APP_ENV` confirmed as the exact environment variable name in Python `manager.py` (not `ENVIRONMENT`)? (Confirm in Phase 2 before writing any tests in Phase 3)
 
+### Phase 9: Fix singleton re-init state leakage
+
+**Goal:** Prevent repeated `initConfig()` calls from replacing the module singleton or leaking second-init values into runtime state.
+**Requirements**: MGR-02, MGR-03
+**Depends on:** Phase 8
+**Plans:** 2 plans
+
+Plans:
+- [x] Plan 9.1 — Add singleton re-init regression coverage
+- [ ] Plan 9.2 — Fix `initConfig()` singleton reuse and verify targeted/full suite
+
 ---
 
-*Last updated: 2026-03-31 (after Plan 8.4 completion — publish-ready build, type resolution, runtime entry points, and tarball contents validated)*
+*Last updated: 2026-03-31 (after Plan 9.1 completion — singleton re-init regression coverage added; implementation fix remains in Plan 9.2)*
 *Author: architect-agent*

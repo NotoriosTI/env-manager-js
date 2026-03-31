@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: complete
-last_updated: "2026-03-31T00:42:51.498Z"
-last_activity: "2026-03-31 - Completed 08-04-PLAN.md (publish-ready build, type resolution, and tarball validation confirmed)"
-current_phase: "08"
-current_plan: "04"
-total_plans_in_phase: "04"
+status: in_progress
+last_updated: "2026-03-31T04:34:32.421Z"
+last_activity: "2026-03-31 - Completed 09-01-PLAN.md (singleton re-init regression coverage added; expected-red failure captured)"
+current_phase: "09"
+current_plan: "02"
+total_plans_in_phase: "02"
 progress:
-  total_phases: 8
+  total_phases: 9
   completed_phases: 8
-  total_plans: 29
-  completed_plans: 29
+  total_plans: 31
+  completed_plans: 30
 ---
 
 # Project State: env-manager-js
@@ -20,7 +20,7 @@ Last updated: 2026-03-31
 
 ## Current Phase
 
-**Phase 8 — Integration Verification + Publish** | COMPLETE (Plans 8.1 through 8.4 complete)
+**Phase 9 — Fix singleton re-init state leakage** | IN PROGRESS (Plan 9.1 complete; Plan 9.2 remaining)
 
 ## Phase Status
 
@@ -34,6 +34,13 @@ Last updated: 2026-03-31
 | 6 — Loaders + Factory | Complete | All 3 plans done (LOAD-01–09); factory memoized, all loaders implemented |
 | 7 — ConfigManager + Singleton | Complete | All 4 plans done (7.1–7.4); 61/61 Phase 7 tests passing |
 | 8 — Integration Verification + Publish | Complete | Plans 8.1-8.4 complete; tests, publish metadata, public API, build validation, and tarball validation all passed |
+| 9 — Fix singleton re-init state leakage | In Progress | Plan 9.1 complete; regression coverage added, implementation fix pending in Plan 9.2 |
+
+## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 9 added: Fix singleton re-init state leakage
 
 ## Requirement Coverage
 
@@ -87,6 +94,7 @@ Last updated: 2026-03-31
 - [Phase 08]: Keep top-level main and types as compatibility fallbacks for older tools that do not honor exports.
 - [Phase 08]: Public API verification is evidence-only work; validate both src/index.ts and built ESM/CJS entry points before changing exports.
 - [Phase 08]: Record publish-validation plans as explicit empty task commits when all build and packaging gates pass without file changes.
+- [Phase 09]: Lock the re-init regression through public identity and state assertions instead of constructor spies.
 
 ## Performance Metrics
 
@@ -104,12 +112,13 @@ Last updated: 2026-03-31
 | Phase 08 P02 | 1 min | 2 tasks | 1 files |
 | Phase 08 P03 | 1 min | 1 tasks | 0 files |
 | Phase 08 P04 | 1 min | 1 tasks | 0 files |
+| Phase 09 P01 | 3 min | 1 tasks | 1 files |
 
 ## Session Continuity
 
-- Stopped at: Completed 08-04-PLAN.md (publish-ready build, type resolution, and tarball validation confirmed)
+- Stopped at: Completed 09-01-PLAN.md (singleton re-init regression coverage added; expected-red failure captured)
 - Resume file: None
-- Next: No remaining plans in Phase 08
+- Next: Execute 09-02-PLAN.md to change `initConfig()` so re-init returns the existing singleton without loading replacement state
 
 - vitest 4.1.2 `mockReturnValue` + `new` incompatibility: use try/catch factory — `new SecretManagerServiceClient()` throws vitest 4 guard; fallback to calling as plain function returns mockClient. In production, `new` path succeeds.
 

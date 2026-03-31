@@ -85,8 +85,8 @@ Requirements for initial release. Each maps to roadmap phases.
 ### Manager & Singleton
 
 - [ ] **MGR-01**: ConfigManager loads local .env, coerces types, writes process.env
-- [ ] **MGR-02**: Singleton API: initConfig/getConfig/requireConfig work correctly
-- [ ] **MGR-03**: Re-init logs warning "Configuration manager already initialised"
+- [x] **MGR-02**: Singleton API: initConfig/getConfig/requireConfig work correctly
+- [x] **MGR-03**: Re-init logs warning "Configuration manager already initialised"
 - [ ] **MGR-04**: requireConfig throws when singleton not initialized
 - [ ] **MGR-05**: Debug mode disables masking (logs show raw values)
 - [ ] **MGR-06**: APP_ENV selects active environment
