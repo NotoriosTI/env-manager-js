@@ -14,7 +14,7 @@ import type {
 } from './types.js';
 import { parseEnvironments } from './environment.js';
 import { _resetLoaderCache, createLoader } from './factory.js';
-import { coerceType, loadYaml } from './utils.js';
+import { coerceType, loadYaml, maskSecret } from './utils.js';
 
 let singleton: ConfigManager | null = null;
 
@@ -393,6 +393,28 @@ export class ConfigManager {
     _processEnvWrites.add(key);
   }
 
+  private _finalizeLoadedValue(
+    name: string,
+    sourceKey: string,
+    def: VariableDefinition,
+    rawValue: unknown,
+  ): unknown {
+    let coerced: unknown = rawValue;
+    if (rawValue !== null && rawValue !== undefined && def.type != null) {
+      coerced = coerceType(rawValue, def.type, name);
+    }
+
+    this._values[name] = coerced;
+
+    if (coerced !== null && coerced !== undefined) {
+      const value = String(coerced);
+      this._writeProcessEnv(sourceKey, value);
+      console.log(`Loaded ${name}: ${this._debug ? value : maskSecret(value)}`);
+    }
+
+    return coerced;
+  }
+
   load(): MaybePromise<void> {
     if (this._loaded) return;
     if (this._loadingPromise !== null) return this._loadingPromise;
@@ -487,19 +509,7 @@ export class ConfigManager {
             rawValue = def.default;
           }
 
-          let coerced: unknown = rawValue;
-          if (rawValue !== null && def.type != null) {
-            coerced = coerceType(rawValue, def.type, name);
-          }
-
-          this._values[name] = coerced;
-
-          if (coerced !== null) {
-            this._writeProcessEnv(sourceKey, String(coerced));
-            if (this._debug) {
-              console.log(`Loaded ${name}: ${String(coerced)}`);
-            }
-          }
+          this._finalizeLoadedValue(name, sourceKey, def, rawValue);
         }
       };
 
@@ -629,19 +639,7 @@ export class ConfigManager {
           continue;
         }
 
-        let coerced: unknown = rawValue;
-        if (def.type != null) {
-          coerced = coerceType(rawValue, def.type, name);
-        }
-
-        this._values[name] = coerced;
-
-        if (coerced !== null) {
-          this._writeProcessEnv(sourceKey, String(coerced));
-          if (this._debug) {
-            console.log(`Loaded ${name}: ${String(coerced)}`);
-          }
-        }
+        this._finalizeLoadedValue(name, sourceKey, def, rawValue);
       }
     };
 
@@ -700,11 +698,7 @@ export class ConfigManager {
             // process.env check first (may bypass missing file entirely)
             if (process.env[sourceKey] !== undefined) {
               const envVal = process.env[sourceKey]!;
-              let coerced: unknown = envVal;
-              if (def.type != null) coerced = coerceType(envVal, def.type, name);
-              this._values[name] = coerced;
-              if (coerced !== null) this._writeProcessEnv(sourceKey, String(coerced));
-              return coerced as unknown;
+              return this._finalizeLoadedValue(name, sourceKey, def, envVal) as unknown;
             }
             // Try to read the file (may throw DotEnvLoader error with file path)
             const loader = createLoader({ secretOrigin: ctx.secretOrigin, gcpProjectId: ctx.gcpProjectId, dotenvPath: ctx.dotenvPath });
@@ -714,19 +708,11 @@ export class ConfigManager {
                 if (resolved === null) {
                   return this._handleMissingLoadedValue(name, def, ctx, sourceKey);
                 }
-                let coerced: unknown = resolved;
-                if (def.type != null) coerced = coerceType(resolved, def.type, name);
-                this._values[name] = coerced;
-                if (coerced !== null) this._writeProcessEnv(sourceKey, String(coerced));
-                return coerced as unknown;
+                return this._finalizeLoadedValue(name, sourceKey, def, resolved) as unknown;
               });
             }
             if (result !== null) {
-              let coerced: unknown = result;
-              if (def.type != null) coerced = coerceType(result, def.type, name);
-              this._values[name] = coerced;
-              if (coerced !== null) this._writeProcessEnv(sourceKey, String(coerced));
-              return coerced as unknown;
+              return this._finalizeLoadedValue(name, sourceKey, def, result) as unknown;
             }
             // Still null after re-fetch: fall through to required/strict checks
           }
@@ -778,11 +764,7 @@ export class ConfigManager {
           return null;
         }
 
-        let coerced: unknown = rawValue;
-        if (def.type != null) coerced = coerceType(rawValue, def.type, name);
-        this._values[name] = coerced;
-        if (coerced !== null) this._writeProcessEnv(sourceKey, String(coerced));
-        return coerced as unknown;
+        return this._finalizeLoadedValue(name, sourceKey, def, rawValue) as unknown;
       } else {
         // NEW FORMAT, no explicit source: use varname as implicit source, call createLoader lazily
         const ctx = this._effectiveSourceContext(name);
@@ -832,11 +814,7 @@ export class ConfigManager {
           return null;
         }
 
-        let coerced: unknown = rawValue;
-        if (def.type != null) coerced = coerceType(rawValue, def.type, name);
-        this._values[name] = coerced;
-        if (coerced !== null) this._writeProcessEnv(sourceKey, String(coerced));
-        return coerced as unknown;
+        return this._finalizeLoadedValue(name, sourceKey, def, rawValue) as unknown;
       }
     }
 
@@ -893,15 +871,7 @@ export class ConfigManager {
       return null;
     }
 
-    let coerced: unknown = rawValue;
-    if (def.type != null) coerced = coerceType(rawValue, def.type, name);
-
-    this._values[name] = coerced;
-    if (coerced !== null) {
-      this._writeProcessEnv(sourceKey, String(coerced));
-    }
-
-    return coerced as unknown;
+    return this._finalizeLoadedValue(name, sourceKey, def, rawValue) as unknown;
   }
 
   private _handleMissingLoadedValue(
@@ -983,11 +953,7 @@ export class ConfigManager {
       }
     }
 
-    let coerced: unknown = value;
-    if (def.type != null) coerced = coerceType(value, def.type, name);
-    this._values[name] = coerced;
-    if (coerced !== null) this._writeProcessEnv(sourceKey, String(coerced));
-    return coerced as unknown;
+    return this._finalizeLoadedValue(name, sourceKey, def, value) as unknown;
   }
 }
 
