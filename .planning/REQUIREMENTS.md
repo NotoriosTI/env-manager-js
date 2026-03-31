@@ -196,8 +196,8 @@ Requirements for initial release. Each maps to roadmap phases.
 | VAL-12 | Phase 7 | Not started |
 | VAL-13 | Phase 7 | Not started |
 | MGR-01 | Phase 7 | Not started |
-| MGR-02 | Phase 7 | Not started |
-| MGR-03 | Phase 7 | Not started |
+| MGR-02 | Phase 7 | Complete |
+| MGR-03 | Phase 7 | Complete |
 | MGR-04 | Phase 7 | Not started |
 | MGR-05 | Phase 7 | Not started |
 | MGR-06 | Phase 7 | Not started |

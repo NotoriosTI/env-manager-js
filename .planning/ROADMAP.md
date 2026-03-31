@@ -426,9 +426,9 @@ Phase 1 (Bootstrap)
 
 Plans:
 - [x] Plan 9.1 — Add singleton re-init regression coverage
-- [ ] Plan 9.2 — Fix `initConfig()` singleton reuse and verify targeted/full suite
+- [x] Plan 9.2 — Fix `initConfig()` singleton reuse and verify targeted/full suite
 
 ---
 
-*Last updated: 2026-03-31 (after Plan 9.1 completion — singleton re-init regression coverage added; implementation fix remains in Plan 9.2)*
+*Last updated: 2026-03-31 (after Plan 9.2 completion — singleton re-init now reuses the live manager and the full suite passes)*
 *Author: architect-agent*
