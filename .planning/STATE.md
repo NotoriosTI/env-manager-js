@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: unknown
-last_updated: "2026-03-31T06:06:44.459Z"
-last_activity: 2026-03-31 - Completed Plan 11.2 runtime cleanup for manager finalization and GCP loader seams
+status: complete
+last_updated: "2026-03-31T06:10:47.504Z"
+last_activity: 2026-03-31 - Completed Plan 11.3 Vitest config migration and regression verification
 progress:
   total_phases: 11
-  completed_phases: 10
+  completed_phases: 11
   total_plans: 40
-  completed_plans: 39
+  completed_plans: 40
 ---
 
 # Project State: env-manager-js
@@ -17,9 +17,9 @@ Last updated: 2026-03-31
 
 ## Current Phase
 
-**Phase 11 — Address code cleanup debt in ConfigManager, GCP loader, and Vitest config** | IN PROGRESS (Plans 11.1-11.2 complete; Vitest config migration remains)
+**Phase 11 — Address code cleanup debt in ConfigManager, GCP loader, and Vitest config** | COMPLETE (Plans 11.1-11.3 complete; deprecated Vitest config debt closed)
 
-- Current Plan: 3
+- Current Plan: Complete
 - Total Plans in Phase: 3
 
 ## Phase Status
@@ -36,7 +36,7 @@ Last updated: 2026-03-31
 | 8 — Integration Verification + Publish | Complete | Plans 8.1-8.4 complete; tests, publish metadata, public API, build validation, and tarball validation all passed |
 | 9 — Fix singleton re-init state leakage | Complete | Plans 9.1 and 9.2 complete; re-init now reuses the live singleton and full regression verification passed |
 | 10 — Address milestone audit gaps and verification closure | Complete | Plans 10.1-10.6 complete; README singleton wording matches shipped behavior, the Phase 10 verification artifact exists, and the refreshed milestone audit closes the prior blockers with residual tech debt only |
-| 11 — Address code cleanup debt in ConfigManager, GCP loader, and Vitest config | In Progress | Plans 11.1-11.2 complete; Plan 11.3 remains for Vitest config migration |
+| 11 — Address code cleanup debt in ConfigManager, GCP loader, and Vitest config | Complete | Plans 11.1-11.3 complete; supported serial-file Vitest config verified and deprecated warning removed |
 
 ## Accumulated Context
 
@@ -116,6 +116,8 @@ Last updated: 2026-03-31
 - [Phase 11]: Express the future GCP loader seam in tests through an injected client factory shape instead of private instance field mutation.
 - [Phase 11]: Centralize manager source-value finalization in one helper so eager and lazy paths cannot drift on storage, write-back, or masking.
 - [Phase 11]: Expose a supported GCP loader createClient seam instead of keeping a Vitest-specific constructor fallback in production code.
+- [Phase 11]: Use Vitest's supported top-level fileParallelism control to preserve serial test-file execution instead of deprecated poolOptions.forks.singleFork.
+- [Phase 11]: Record the full regression rerun as an explicit empty commit because the second task produced verification evidence, not additional file changes.
 
 ## Performance Metrics
 
@@ -142,12 +144,13 @@ Last updated: 2026-03-31
 | Phase 10 P10.5 | 8 min | 2 tasks | 8 files |
 | Phase 11 P01 | 3 min | 2 tasks | 2 files |
 | Phase 11 P02 | 4 min | 2 tasks | 4 files |
+| Phase 11 P03 | 2 min | 2 tasks | 1 files |
 
 ## Session Continuity
 
-- Stopped at: Completed 11-02-PLAN.md
+- Stopped at: Completed 11-03-PLAN.md
 - Resume file: None
-- Next: Execute 11-03-PLAN.md
+- Next: Milestone complete
 
 - vitest 4.1.2 constructor mocking now uses `GCPSecretLoader`'s explicit `createClient` seam; production runtime no longer carries a Vitest-specific fallback.
 
@@ -155,7 +158,7 @@ Last updated: 2026-03-31
 | 07 | 02 | ~10min | 2 | 1 |
 
 ---
-*State updated: 2026-03-31 after Plan 11.2 completion (runtime cleanup is complete and Phase 11 is ready for the Vitest config migration plan)*
+*State updated: 2026-03-31 after Plan 11.3 completion (Phase 11 is complete and the Vitest config migration is verified)*
 
 ### Quick Tasks Completed
 
@@ -163,4 +166,4 @@ Last updated: 2026-03-31
 |---|-------------|------|--------|-----------|
 | 1 | Create a Readme file for the project including installation, config, usage, etc | 2026-03-30 | 3467b47 | [1-create-a-readme-file-for-the-project-inc](./quick/1-create-a-readme-file-for-the-project-inc/) |
 
-Last activity: 2026-03-31 - Completed Plan 11.2 runtime cleanup for manager finalization and GCP loader seams
+Last activity: 2026-03-31 - Completed Plan 11.3 Vitest config migration and regression verification
