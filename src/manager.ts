@@ -665,20 +665,10 @@ export class ConfigManager {
           const ctxLabel = buildContextLabel(ctx);
           const sourceKey = def.source;
 
-          // For local-origin with per-variable dotenvPath: try to re-fetch synchronously.
-          // DotEnvLoader.get() is always sync, so no async branch needed here.
-          if (ctx.secretOrigin === 'local' && def.dotenvPath != null && def.dotenvPath !== '') {
-            if (process.env[sourceKey] !== undefined) {
-              const envVal = process.env[sourceKey]!;
-              return this._finalizeLoadedValue(name, sourceKey, def, envVal) as unknown;
-            }
-            const loader = createLoader({ secretOrigin: ctx.secretOrigin, gcpProjectId: ctx.gcpProjectId, dotenvPath: ctx.dotenvPath });
-            const result = loader.get(sourceKey);
-            // DotEnvLoader.get() is synchronous; result is string | null (not a Promise)
-            if (result !== null && result !== undefined && typeof (result as unknown as Promise<unknown>).then !== 'function') {
-              return this._finalizeLoadedValue(name, sourceKey, def, result) as unknown;
-            }
-            // Still null: fall through to required/strict checks
+          // process.env override at get() time
+          if (process.env[sourceKey] !== undefined) {
+            const envVal = process.env[sourceKey]!;
+            return this._finalizeLoadedValue(name, sourceKey, def, envVal) as unknown;
           }
 
           return this._handleMissingLoadedValue(name, def, ctx, sourceKey, ctxLabel);
@@ -731,25 +721,13 @@ export class ConfigManager {
 
         return this._finalizeLoadedValue(name, sourceKey, def, rawValue) as unknown;
       } else {
-        // NEW FORMAT, no explicit source: check process.env and local loader only.
-        // GCP variables without a source key are not supported for lazy sync fetch;
-        // they should have been loaded during await initConfig().
-        const ctx = this._effectiveSourceContext(name);
+        // NEW FORMAT, no explicit source: check process.env only.
+        // Variables should have been loaded during await manager.load().
         const sourceKey = name;
 
         let rawValue: unknown = null;
         if (process.env[sourceKey] !== undefined) {
           rawValue = process.env[sourceKey];
-        } else if (ctx.secretOrigin === 'local') {
-          try {
-            const loader = createLoader({ secretOrigin: ctx.secretOrigin, gcpProjectId: ctx.gcpProjectId, dotenvPath: ctx.dotenvPath });
-            const result = loader.get(sourceKey);
-            if (result !== null && result !== undefined && typeof (result as unknown as Promise<unknown>).then !== 'function') {
-              rawValue = result;
-            }
-          } catch {
-            // ignore loader errors; fall through to default/required checks
-          }
         }
 
         if (rawValue === null && def.default !== undefined) {
@@ -771,23 +749,13 @@ export class ConfigManager {
     }
 
     // New format with explicit source but not in cache (should have been loaded during init).
-    // Check process.env override and local loader; GCP vars are expected in cache after await initConfig().
+    // Only check process.env override; GCP vars are expected in cache after await manager.load().
     const ctx = this._effectiveSourceContext(name);
     const sourceKey = def.source;
 
     let rawValue: unknown = null;
     if (process.env[sourceKey] !== undefined) {
       rawValue = process.env[sourceKey];
-    } else if (ctx.secretOrigin === 'local') {
-      try {
-        const loader = createLoader({ secretOrigin: ctx.secretOrigin, gcpProjectId: ctx.gcpProjectId, dotenvPath: ctx.dotenvPath });
-        const result = loader.get(sourceKey);
-        if (result !== null && result !== undefined && typeof (result as unknown as Promise<unknown>).then !== 'function') {
-          rawValue = result;
-        }
-      } catch {
-        rawValue = null;
-      }
     }
 
     if (rawValue === null && def.default !== undefined) {

@@ -34,41 +34,41 @@ describe('DotEnvLoader', () => {
     process.env.DB_PASSWORD = originalDbPassword;
   });
 
-  it('reads KEY=VALUE from .env file', () => {
+  it('reads KEY=VALUE from .env file', async () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
     const envPath = writeEnv(tmpDir, 'DB_PASSWORD=secret123\n');
 
     const loader = new DotEnvLoader(envPath);
 
-    expect(loader.get('DB_PASSWORD')).toBe('secret123');
+    expect(await loader.get('DB_PASSWORD')).toBe('secret123');
   });
 
-  it('returns null for missing keys', () => {
+  it('returns null for missing keys', async () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
     const envPath = writeEnv(tmpDir, 'DB_PASSWORD=secret123\n');
 
     const loader = new DotEnvLoader(envPath);
 
-    expect(loader.get('NONEXISTENT')).toBeNull();
+    expect(await loader.get('NONEXISTENT')).toBeNull();
   });
 
-  it('process.env overrides .env file value', () => {
+  it('process.env overrides .env file value', async () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
     const envPath = writeEnv(tmpDir, 'DB_PASSWORD=secret123\n');
     process.env.DB_PASSWORD = 'from_env';
 
     const loader = new DotEnvLoader(envPath);
 
-    expect(loader.get('DB_PASSWORD')).toBe('from_env');
+    expect(await loader.get('DB_PASSWORD')).toBe('from_env');
   });
 
-  it('getMany returns map with present and missing keys', () => {
+  it('getMany returns map with present and missing keys', async () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
     const envPath = writeEnv(tmpDir, 'DB_PASSWORD=secret123\n');
 
     const loader = new DotEnvLoader(envPath);
 
-    expect(loader.getMany(['DB_PASSWORD', 'NONEXISTENT'])).toEqual({
+    expect(await loader.getMany(['DB_PASSWORD', 'NONEXISTENT'])).toEqual({
       DB_PASSWORD: 'secret123',
       NONEXISTENT: null,
     });

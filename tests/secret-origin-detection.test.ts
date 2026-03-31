@@ -26,7 +26,7 @@ afterEach(() => {
 });
 
 describe('secret origin detection', () => {
-  it('reads SECRET_ORIGIN and GCP_PROJECT_ID from .env file', () => {
+  it('reads SECRET_ORIGIN and GCP_PROJECT_ID from .env file', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -52,12 +52,13 @@ describe('secret origin detection', () => {
       'utf8',
     );
     const fakeLoader = {
-      get: vi.fn().mockReturnValue('from-gcp-loader'),
-      getMany: vi.fn().mockReturnValue({ TEST_VAR: 'from-gcp-loader' }),
+      get: vi.fn().mockResolvedValue('from-gcp-loader'),
+      getMany: vi.fn().mockResolvedValue({ TEST_VAR: 'from-gcp-loader' }),
     };
     vi.spyOn(factory, 'createLoader').mockReturnValue(fakeLoader as never);
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('TEST_VAR')).toBe('from-gcp-loader');
     expect(factory.createLoader).toHaveBeenCalledWith(

@@ -104,7 +104,7 @@ describe('TestEnvironmentSelection', () => {
     }
   });
 
-  it('environment origin used for secret_origin', () => {
+  it('environment origin used for secret_origin', async () => {
     const repoRoot = createTempDir();
     try {
       const configPath = writeRepoConfig(
@@ -117,16 +117,18 @@ describe('TestEnvironmentSelection', () => {
             default: true
         variables:
           api_key:
+            source: api_key
             required: true
         `,
       );
       const fakeLoader = {
-        load: vi.fn().mockReturnValue('staging-secret'),
+        get: vi.fn().mockResolvedValue('staging-secret'),
+        getMany: vi.fn().mockResolvedValue({ api_key: 'staging-secret' }),
       };
       vi.spyOn(factory, 'createLoader').mockReturnValue(fakeLoader as never);
 
       const manager = new ConfigManager(configPath);
-      manager.get('api_key');
+      await manager.load();
 
       expect(factory.createLoader).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -138,7 +140,7 @@ describe('TestEnvironmentSelection', () => {
     }
   });
 
-  it('environment gcp_project_id propagated', () => {
+  it('environment gcp_project_id propagated', async () => {
     const repoRoot = createTempDir();
     try {
       const configPath = writeRepoConfig(
@@ -151,16 +153,18 @@ describe('TestEnvironmentSelection', () => {
             default: true
         variables:
           api_key:
+            source: api_key
             required: true
         `,
       );
       const fakeLoader = {
-        load: vi.fn().mockReturnValue('staging-secret'),
+        get: vi.fn().mockResolvedValue('staging-secret'),
+        getMany: vi.fn().mockResolvedValue({ api_key: 'staging-secret' }),
       };
       vi.spyOn(factory, 'createLoader').mockReturnValue(fakeLoader as never);
 
       const manager = new ConfigManager(configPath);
-      manager.get('api_key');
+      await manager.load();
 
       expect(factory.createLoader).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -172,7 +176,7 @@ describe('TestEnvironmentSelection', () => {
     }
   });
 
-  it('variable environment pin uses pinned context', () => {
+  it('variable environment pin uses pinned context', async () => {
     const repoRoot = createTempDir();
     try {
       const configPath = writeRepoConfig(
@@ -188,17 +192,19 @@ describe('TestEnvironmentSelection', () => {
             gcp_project_id: prod-project
         variables:
           payment_token:
+            source: payment_token
             required: true
             environment: production
         `,
       );
       const fakeLoader = {
-        load: vi.fn().mockReturnValue('payment-token'),
+        get: vi.fn().mockResolvedValue('payment-token'),
+        getMany: vi.fn().mockResolvedValue({ payment_token: 'payment-token' }),
       };
       vi.spyOn(factory, 'createLoader').mockReturnValue(fakeLoader as never);
 
       const manager = new ConfigManager(configPath);
-      manager.get('payment_token');
+      await manager.load();
 
       expect(factory.createLoader).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -211,7 +217,7 @@ describe('TestEnvironmentSelection', () => {
     }
   });
 
-  it('variable origin override replaces only origin on pinned environment', () => {
+  it('variable origin override replaces only origin on pinned environment', async () => {
     const repoRoot = createTempDir();
     try {
       const configPath = writeRepoConfig(
@@ -224,22 +230,24 @@ describe('TestEnvironmentSelection', () => {
             default: true
         variables:
           payment_token:
+            source: PAYMENT_TOKEN
             required: true
             environment: production
-            secret_origin: local
+            secret_origin: gcp
         `,
       );
       const fakeLoader = {
-        load: vi.fn().mockReturnValue('payment-token'),
+        get: vi.fn().mockResolvedValue('payment-token'),
+        getMany: vi.fn().mockResolvedValue({ PAYMENT_TOKEN: 'payment-token' }),
       };
       vi.spyOn(factory, 'createLoader').mockReturnValue(fakeLoader as never);
 
       const manager = new ConfigManager(configPath);
-      manager.get('payment_token');
+      await manager.load();
 
       expect(factory.createLoader).toHaveBeenCalledWith(
         expect.objectContaining({
-          secretOrigin: 'local',
+          secretOrigin: 'gcp',
           gcpProjectId: 'prod-project',
         }),
       );
@@ -279,8 +287,9 @@ describe('TestEnvironmentSelection', () => {
       vi.stubEnv('APP_ENV', 'development');
 
       const manager = new ConfigManager(configPath);
+      await manager.load();
 
-      await expect(manager.get('payment_token')).resolves.toBe('payment-token');
+      expect(manager.get('payment_token')).toBe('payment-token');
       expect(process.env.PAYMENT_TOKEN).toBe('payment-token');
     } finally {
       cleanupTempDir(repoRoot);
@@ -364,7 +373,7 @@ describe('TestNoDefaultEnvironment', () => {
 });
 
 describe('TestBackwardsCompatibility', () => {
-  it('old format loads from dotenv', () => {
+  it('old format loads from dotenv', async () => {
     const repoRoot = createTempDir();
     try {
       const configPath = writeConfig(
@@ -372,16 +381,14 @@ describe('TestBackwardsCompatibility', () => {
         `
         variables:
           db_password:
+            source: DB_PASSWORD
             required: true
         `,
       );
       writeEnv(repoRoot, 'DB_PASSWORD=dotenv-secret\n');
-      const fakeLoader = {
-        load: vi.fn().mockReturnValue('dotenv-secret'),
-      };
-      vi.spyOn(factory, 'createLoader').mockReturnValue(fakeLoader as never);
 
       const manager = new ConfigManager(configPath);
+      await manager.load();
 
       expect(manager.get('db_password')).toBe('dotenv-secret');
     } finally {
@@ -389,7 +396,7 @@ describe('TestBackwardsCompatibility', () => {
     }
   });
 
-  it('old format: process.env beats dotenv', () => {
+  it('old format: process.env beats dotenv', async () => {
     const repoRoot = createTempDir();
     try {
       const configPath = writeConfig(
@@ -397,6 +404,7 @@ describe('TestBackwardsCompatibility', () => {
         `
         variables:
           db_password:
+            source: DB_PASSWORD
             required: true
         `,
       );
@@ -404,6 +412,7 @@ describe('TestBackwardsCompatibility', () => {
       vi.stubEnv('DB_PASSWORD', 'process-secret');
 
       const manager = new ConfigManager(configPath);
+      await manager.load();
 
       expect(manager.get('db_password')).toBe('process-secret');
     } finally {
@@ -411,7 +420,7 @@ describe('TestBackwardsCompatibility', () => {
     }
   });
 
-  it('old format: YAML default is fallback', () => {
+  it('old format: YAML default is fallback', async () => {
     const repoRoot = createTempDir();
     try {
       const configPath = writeConfig(
@@ -425,6 +434,7 @@ describe('TestBackwardsCompatibility', () => {
       );
 
       const manager = new ConfigManager(configPath);
+      await manager.load();
 
       expect(manager.get('db_password')).toBe('yaml-default');
     } finally {
@@ -432,7 +442,7 @@ describe('TestBackwardsCompatibility', () => {
     }
   });
 
-  it('old format: required missing throws', () => {
+  it('old format: required missing throws', async () => {
     const repoRoot = createTempDir();
     try {
       const configPath = writeConfig(
@@ -440,21 +450,23 @@ describe('TestBackwardsCompatibility', () => {
         `
         variables:
           db_password:
+            source: DB_PASSWORD
             required: true
         `,
       );
+      // Write an empty dotenv so the loader does not throw "file not found"
+      writeEnv(repoRoot, '');
 
       const manager = new ConfigManager(configPath);
-
-      expect(() => manager.get('db_password')).toThrow(
-        "Required variable 'db_password' is not set",
+      await expect(manager.load()).rejects.toThrow(
+        "Required variable 'db_password' not found in source",
       );
     } finally {
       cleanupTempDir(repoRoot);
     }
   });
 
-  it('old format: optional missing warns', () => {
+  it('old format: optional missing warns', async () => {
     const repoRoot = createTempDir();
     try {
       const configPath = writeConfig(
@@ -468,6 +480,7 @@ describe('TestBackwardsCompatibility', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
       const manager = new ConfigManager(configPath);
+      await manager.load();
 
       expect(manager.get('optional_value')).toBeNull();
       expect(warnSpy).toHaveBeenCalledWith(
@@ -480,7 +493,7 @@ describe('TestBackwardsCompatibility', () => {
 });
 
 describe('TestParamOverrides', () => {
-  it('secret_origin param overrides env config', () => {
+  it('secret_origin param overrides env config', async () => {
     const repoRoot = createTempDir();
     try {
       const configPath = writeRepoConfig(
@@ -488,25 +501,28 @@ describe('TestParamOverrides', () => {
         `
         environments:
           staging:
-            origin: gcp
+            origin: local
             gcp_project_id: staging-project
             default: true
         variables:
           api_key:
+            source: api_key
             required: true
         `,
       );
       const fakeLoader = {
-        load: vi.fn().mockReturnValue('override-secret'),
+        get: vi.fn().mockResolvedValue('override-secret'),
+        getMany: vi.fn().mockResolvedValue({ api_key: 'override-secret' }),
       };
       vi.spyOn(factory, 'createLoader').mockReturnValue(fakeLoader as never);
 
-      const manager = new ConfigManager(configPath, { secretOrigin: 'local' });
-      manager.get('api_key');
+      const manager = new ConfigManager(configPath, { secretOrigin: 'gcp', gcpProjectId: 'override-project' });
+      await manager.load();
 
       expect(factory.createLoader).toHaveBeenCalledWith(
         expect.objectContaining({
-          secretOrigin: 'local',
+          secretOrigin: 'gcp',
+          gcpProjectId: 'override-project',
         }),
       );
     } finally {
@@ -514,7 +530,7 @@ describe('TestParamOverrides', () => {
     }
   });
 
-  it('gcp_project_id param overrides env config', () => {
+  it('gcp_project_id param overrides env config', async () => {
     const repoRoot = createTempDir();
     try {
       const configPath = writeRepoConfig(
@@ -527,16 +543,18 @@ describe('TestParamOverrides', () => {
             default: true
         variables:
           api_key:
+            source: api_key
             required: true
         `,
       );
       const fakeLoader = {
-        load: vi.fn().mockReturnValue('override-secret'),
+        get: vi.fn().mockResolvedValue('override-secret'),
+        getMany: vi.fn().mockResolvedValue({ api_key: 'override-secret' }),
       };
       vi.spyOn(factory, 'createLoader').mockReturnValue(fakeLoader as never);
 
       const manager = new ConfigManager(configPath, { gcpProjectId: 'override-project' });
-      manager.get('api_key');
+      await manager.load();
 
       expect(factory.createLoader).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -548,35 +566,34 @@ describe('TestParamOverrides', () => {
     }
   });
 
-  it('dotenv_path param overrides env config', () => {
+  it('dotenv_path param overrides env config', async () => {
     const repoRoot = createTempDir();
     try {
+      const overrideDotenvPath = join(repoRoot, '.env.override');
+      writeEnv(repoRoot, 'api_key=dev-value\n');
+      // Write an override dotenv at a different path
+      const { writeFileSync } = await import('fs');
+      writeFileSync(overrideDotenvPath, 'api_key=override-value\n', 'utf8');
+
       const configPath = writeRepoConfig(
         repoRoot,
         `
         environments:
           development:
             origin: local
-            dotenv_path: .env.dev
+            dotenv_path: .env
             default: true
         variables:
           api_key:
-            required: true
+            source: api_key
+            type: str
         `,
       );
-      const fakeLoader = {
-        load: vi.fn().mockReturnValue('override-secret'),
-      };
-      vi.spyOn(factory, 'createLoader').mockReturnValue(fakeLoader as never);
 
-      const manager = new ConfigManager(configPath, { dotenvPath: '.env.override' });
-      manager.get('api_key');
+      const manager = new ConfigManager(configPath, { dotenvPath: overrideDotenvPath });
+      await manager.load();
 
-      expect(factory.createLoader).toHaveBeenCalledWith(
-        expect.objectContaining({
-          dotenvPath: '.env.override',
-        }),
-      );
+      expect(manager.get('api_key')).toBe('override-value');
     } finally {
       cleanupTempDir(repoRoot);
     }
@@ -584,7 +601,7 @@ describe('TestParamOverrides', () => {
 });
 
 describe('TestSingletonWithEnvironments', () => {
-  it('initConfig works with environment YAML', () => {
+  it('initConfig works with environment YAML', async () => {
     const repoRoot = createTempDir();
     try {
       const configPath = writeRepoConfig(
@@ -601,7 +618,7 @@ describe('TestSingletonWithEnvironments', () => {
         `,
       );
 
-      initConfig(configPath);
+      await initConfig(configPath);
 
       expect(getConfig()).toBeDefined();
       expect(requireConfig()).toBeDefined();
@@ -610,7 +627,7 @@ describe('TestSingletonWithEnvironments', () => {
     }
   });
 
-  it('initConfig signature accepts all params', () => {
+  it('initConfig signature accepts all params', async () => {
     const repoRoot = createTempDir();
     try {
       const configPath = writeRepoConfig(
@@ -624,13 +641,13 @@ describe('TestSingletonWithEnvironments', () => {
         `,
       );
 
-      expect(() =>
+      await expect(
         initConfig(configPath, {
           secretOrigin: 'local',
           gcpProjectId: 'override-project',
           dotenvPath: '.env.override',
         }),
-      ).not.toThrow();
+      ).resolves.not.toThrow();
     } finally {
       cleanupTempDir(repoRoot);
     }

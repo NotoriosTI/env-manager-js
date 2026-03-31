@@ -18,9 +18,9 @@ function createRepoRoot(): string {
 
 function createFakeLoader(values: Record<string, string | null>) {
   const fakeLoader = {
-    get: vi.fn((key: string) => values[key] ?? null),
+    get: vi.fn((key: string) => Promise.resolve(values[key] ?? null)),
     getMany: vi.fn((keys: string[]) =>
-      Object.fromEntries(keys.map((key) => [key, values[key] ?? null])),
+      Promise.resolve(Object.fromEntries(keys.map((key) => [key, values[key] ?? null]))),
     ),
   };
 
@@ -42,7 +42,7 @@ afterEach(() => {
 });
 
 describe('resolution pipeline', () => {
-  it('process.env beats active environment dotenv', () => {
+  it('process.env beats active environment dotenv', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -64,11 +64,12 @@ describe('resolution pipeline', () => {
     vi.stubEnv('API_TOKEN', 'from-process-env');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('API_TOKEN')).toBe('from-process-env');
   });
 
-  it('active environment dotenv used when process.env missing', () => {
+  it('active environment dotenv used when process.env missing', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -88,11 +89,12 @@ describe('resolution pipeline', () => {
     vi.stubEnv('APP_ENV', 'staging');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('API_TOKEN')).toBe('from-staging-dotenv');
   });
 
-  it('YAML default is fallback after process.env and dotenv', () => {
+  it('YAML default is fallback after process.env and dotenv', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -113,11 +115,12 @@ describe('resolution pipeline', () => {
     vi.stubEnv('APP_ENV', 'staging');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('DEFAULT_TOKEN')).toBe('fallback-token');
   });
 
-  it('per-variable origin:gcp override uses GCP loader', () => {
+  it('per-variable origin:gcp override uses GCP loader', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -144,6 +147,7 @@ describe('resolution pipeline', () => {
     vi.stubEnv('APP_ENV', 'staging');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('GCP_SECRET')).toBe('from-gcp-loader');
     expect(factory.createLoader).toHaveBeenCalledWith(
@@ -185,11 +189,12 @@ describe('resolution pipeline', () => {
     vi.stubEnv('APP_ENV', 'staging');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
-    await expect(manager.get('GCP_SECRET')).resolves.toBe('from-async-gcp-loader');
+    expect(manager.get('GCP_SECRET')).toBe('from-async-gcp-loader');
   });
 
-  it('process.env beats pinned environment lookup', () => {
+  it('process.env beats pinned environment lookup', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -215,11 +220,12 @@ describe('resolution pipeline', () => {
     vi.stubEnv('PINNED_SECRET', 'from-process-env');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('PINNED_SECRET')).toBe('from-process-env');
   });
 
-  it('variables without overrides keep active environment behavior', () => {
+  it('variables without overrides keep active environment behavior', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -243,11 +249,12 @@ describe('resolution pipeline', () => {
     vi.stubEnv('APP_ENV', 'development');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('SHARED_TOKEN')).toBe('from-dev-dotenv');
   });
 
-  it('dotenv_path override uses project-root-relative path', () => {
+  it('dotenv_path override uses project-root-relative path', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -269,11 +276,12 @@ describe('resolution pipeline', () => {
     vi.stubEnv('APP_ENV', 'staging');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('OVERRIDDEN_TOKEN')).toBe('from-override-dotenv');
   });
 
-  it('absolute dotenv_path loads from that exact file', () => {
+  it('absolute dotenv_path loads from that exact file', async () => {
     const repoRoot = createRepoRoot();
     const absoluteDotenvPath = join(repoRoot, 'absolute.env');
     const configPath = writeRepoConfig(
@@ -296,12 +304,13 @@ describe('resolution pipeline', () => {
     vi.stubEnv('APP_ENV', 'staging');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(isAbsolute(absoluteDotenvPath)).toBe(true);
     expect(manager.get('LOCAL_ONLY_TOKEN')).toBe('from-absolute-dotenv');
   });
 
-  it('pinned environment uses that environments defaults', () => {
+  it('pinned environment uses that environments defaults', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -326,11 +335,12 @@ describe('resolution pipeline', () => {
     vi.stubEnv('APP_ENV', 'development');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('PROD_LOCAL_TOKEN')).toBe('from-prod-dotenv');
   });
 
-  it('origin:local + dotenv_path independent of active GCP environment', () => {
+  it('origin:local + dotenv_path independent of active GCP environment', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -354,6 +364,7 @@ describe('resolution pipeline', () => {
     vi.stubEnv('APP_ENV', 'staging');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('LOCAL_ONLY_TOKEN')).toBe('from-local-override');
   });

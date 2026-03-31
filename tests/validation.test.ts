@@ -22,7 +22,7 @@ afterEach(() => {
 });
 
 describe('validation', () => {
-  it('constructor strict=false overrides YAML strict=true', () => {
+  it('constructor strict=false overrides YAML strict=true', async () => {
     const tmpDir = createTempDir();
     const configPath = writeConfig(
       tmpDir,
@@ -40,6 +40,7 @@ variables:
     const dotenvPath = writeEnv(tmpDir, '');
 
     const manager = new ConfigManager(configPath, { dotenvPath, strict: false });
+    await manager.load();
 
     expect(manager.get('DB_PASSWORD')).toBeNull();
   });

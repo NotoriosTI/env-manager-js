@@ -18,9 +18,9 @@ function createRepoRoot(): string {
 
 function createFakeLoader(values: Record<string, string | null>) {
   return {
-    get: vi.fn((key: string) => values[key] ?? null),
+    get: vi.fn((key: string) => Promise.resolve(values[key] ?? null)),
     getMany: vi.fn((keys: string[]) =>
-      Object.fromEntries(keys.map((key) => [key, values[key] ?? null])),
+      Promise.resolve(Object.fromEntries(keys.map((key) => [key, values[key] ?? null]))),
     ),
   };
 }
@@ -35,7 +35,7 @@ afterEach(() => {
 });
 
 describe('optional source handling', () => {
-  it('default-only vars resolve from YAML without creating a loader', () => {
+  it('default-only vars resolve from YAML without creating a loader', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -49,12 +49,13 @@ describe('optional source handling', () => {
     const loaderSpy = vi.spyOn(factory, 'createLoader');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('LOG_LEVEL')).toBe('info');
     expect(loaderSpy).not.toHaveBeenCalled();
   });
 
-  it('default-only var ignores same-named process.env', () => {
+  it('default-only var ignores same-named process.env', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -68,11 +69,12 @@ describe('optional source handling', () => {
     vi.stubEnv('LOG_LEVEL', 'debug');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('LOG_LEVEL')).toBe('info');
   });
 
-  it('source+default uses loader value when present', () => {
+  it('source+default uses loader value when present', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -89,11 +91,12 @@ describe('optional source handling', () => {
     );
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('API_TOKEN')).toBe('from-loader');
   });
 
-  it('source+default falls back to default when source missing', () => {
+  it('source+default falls back to default when source missing', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -108,11 +111,12 @@ describe('optional source handling', () => {
     vi.spyOn(factory, 'createLoader').mockReturnValue(createFakeLoader({ API_TOKEN: null }) as never);
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('API_TOKEN')).toBe('fallback-token');
   });
 
-  it('mixed config only fetches sourced variables from loader', () => {
+  it('mixed config only fetches sourced variables from loader', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -133,6 +137,7 @@ describe('optional source handling', () => {
     vi.spyOn(factory, 'createLoader').mockReturnValue(fakeLoader as never);
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('LOG_LEVEL')).toBe('info');
     expect(manager.get('API_TOKEN')).toBe('from-loader');

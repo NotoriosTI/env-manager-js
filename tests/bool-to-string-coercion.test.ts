@@ -15,12 +15,14 @@ function createTmpDir(): string {
   return tmpDir;
 }
 
-function createManager(yamlText: string): ConfigManager {
+async function createManager(yamlText: string): Promise<ConfigManager> {
   const tmpDir = createTmpDir();
   const configPath = writeConfig(tmpDir, yamlText);
   const dotenvPath = writeEnv(tmpDir, '');
 
-  return new ConfigManager(configPath, { dotenvPath });
+  const manager = new ConfigManager(configPath, { dotenvPath });
+  await manager.load();
+  return manager;
 }
 
 afterEach(() => {
@@ -33,8 +35,8 @@ describe('bool to string coercion', () => {
   test.each([
     [true, 'true'],
     [false, 'false'],
-  ])('YAML bool %s coerced to string "%s"', (yamlValue, expected) => {
-    const manager = createManager(`
+  ])('YAML bool %s coerced to string "%s"', async (yamlValue, expected) => {
+    const manager = await createManager(`
 variables:
   FEATURE_FLAG:
     source: FEATURE_FLAG
@@ -45,8 +47,8 @@ variables:
     expect(manager.get('FEATURE_FLAG')).toBe(expected);
   });
 
-  it('YAML int 8080 coerced to string "8080"', () => {
-    const manager = createManager(`
+  it('YAML int 8080 coerced to string "8080"', async () => {
+    const manager = await createManager(`
 variables:
   PORT:
     source: PORT

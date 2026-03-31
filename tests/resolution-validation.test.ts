@@ -23,9 +23,9 @@ function writeText(path: string, content: string): string {
 
 function createFakeLoader(values: Record<string, string | null>) {
   return {
-    get: vi.fn((key: string) => values[key] ?? null),
+    get: vi.fn((key: string) => Promise.resolve(values[key] ?? null)),
     getMany: vi.fn((keys: string[]) =>
-      Object.fromEntries(keys.map((key) => [key, values[key] ?? null])),
+      Promise.resolve(Object.fromEntries(keys.map((key) => [key, values[key] ?? null]))),
     ),
   };
 }
@@ -40,7 +40,7 @@ afterEach(() => {
 });
 
 describe('resolution validation', () => {
-  it('required missing throws with env context and path', () => {
+  it('required missing throws with env context and path', async () => {
     const repoRoot = createRepoRoot();
     const dotenvPath = join(repoRoot, '.env');
     const configPath = writeRepoConfig(
@@ -62,13 +62,14 @@ describe('resolution validation', () => {
     vi.stubEnv('APP_ENV', 'default');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(() => manager.get('API_KEY')).toThrow(
       `Required variable 'API_KEY' not found in source 'API_KEY' for environment 'default' using local .env '${dotenvPath}'.`,
     );
   });
 
-  it('required with default warns "using YAML default"', () => {
+  it('required with default warns "using YAML default"', async () => {
     const repoRoot = createRepoRoot();
     const dotenvPath = join(repoRoot, '.env');
     const configPath = writeRepoConfig(
@@ -92,6 +93,7 @@ describe('resolution validation', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('API_KEY')).toBe('fallback-key');
     expect(warnSpy).toHaveBeenCalledWith(
@@ -99,7 +101,7 @@ describe('resolution validation', () => {
     );
   });
 
-  it('optional missing warns "resolved to None"', () => {
+  it('optional missing warns "resolved to None"', async () => {
     const repoRoot = createRepoRoot();
     const dotenvPath = join(repoRoot, '.env');
     const configPath = writeRepoConfig(
@@ -122,6 +124,7 @@ describe('resolution validation', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('OPTIONAL_TOKEN')).toBeNull();
     expect(warnSpy).toHaveBeenCalledWith(
@@ -129,7 +132,7 @@ describe('resolution validation', () => {
     );
   });
 
-  it('optional with default is quiet', () => {
+  it('optional with default is quiet', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -152,12 +155,13 @@ describe('resolution validation', () => {
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('OPTIONAL_TOKEN')).toBe('fallback-token');
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it('strict mode throws before optional fallback', () => {
+  it('strict mode throws before optional fallback', async () => {
     const repoRoot = createRepoRoot();
     const dotenvPath = join(repoRoot, '.env');
     const configPath = writeRepoConfig(
@@ -179,13 +183,14 @@ describe('resolution validation', () => {
     vi.stubEnv('APP_ENV', 'default');
 
     const manager = new ConfigManager(configPath, { strict: true });
+    await manager.load();
 
     expect(() => manager.get('OPTIONAL_TOKEN')).toThrow(
       `Strict mode: variable 'OPTIONAL_TOKEN' is missing from source 'OPTIONAL_TOKEN' in environment 'default' using local .env '${dotenvPath}'.`,
     );
   });
 
-  it('GCP context in missing value messages', () => {
+  it('GCP context in missing value messages', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -206,13 +211,14 @@ describe('resolution validation', () => {
     vi.spyOn(factory, 'createLoader').mockReturnValue(createFakeLoader({ API_KEY: null }) as never);
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(() => manager.get('API_KEY')).toThrow(
       "Required variable 'API_KEY' not found in source 'API_KEY' for environment 'default' using GCP project 'app-prod'.",
     );
   });
 
-  it('missing per-variable dotenv raises only when lookup needs file', () => {
+  it('missing per-variable dotenv raises only when lookup needs file', async () => {
     const repoRoot = createRepoRoot();
     const missingPath = join(repoRoot, 'config/.missing.env');
     const configPath = writeRepoConfig(
@@ -234,12 +240,13 @@ describe('resolution validation', () => {
     writeText(join(repoRoot, '.env'), 'API_TOKEN=active-env-token\n');
     vi.stubEnv('APP_ENV', 'default');
 
+    // Per-variable dotenv is missing; load() succeeds (deferred error), get() throws
     const manager = new ConfigManager(configPath);
-
+    await manager.load();
     expect(() => manager.get('API_TOKEN')).toThrow(missingPath);
   });
 
-  it('missing per-variable dotenv bypassed by process.env', () => {
+  it('missing per-variable dotenv bypassed by process.env', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -262,6 +269,7 @@ describe('resolution validation', () => {
     vi.stubEnv('API_TOKEN', 'from-process-env');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('API_TOKEN')).toBe('from-process-env');
   });
@@ -342,7 +350,7 @@ describe('resolution validation', () => {
     expect(() => new ConfigManager(configPath)).toThrow(/validation.*mapping/i);
   });
 
-  it('GCP origin with dotenv_path ignores dotenv', () => {
+  it('GCP origin with dotenv_path ignores dotenv', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -366,6 +374,7 @@ describe('resolution validation', () => {
     vi.spyOn(factory, 'createLoader').mockReturnValue(fakeLoader as never);
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('API_KEY')).toBe('from-gcp-loader');
     expect(factory.createLoader).toHaveBeenCalledWith(

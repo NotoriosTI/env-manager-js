@@ -51,7 +51,7 @@ afterEach(() => {
 // ─── .env.test ────────────────────────────────────────────────────────────────
 
 describe('integration: .env.test file', () => {
-  it('loads all DB variables with correct types', () => {
+  it('loads all DB variables with correct types', async () => {
     const root = createRepoRoot();
     seedFixtures(root, '.env.test');
 
@@ -83,6 +83,7 @@ describe('integration: .env.test file', () => {
     );
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('DB_HOST')).toBe('localhost');
     expect(manager.get('DB_PORT')).toBe(5432);
@@ -116,7 +117,7 @@ describe('integration: .env.test file', () => {
     expect(manager.activeEnvironment?.origin).toBe('local');
   });
 
-  it('required variable present in .env.test does not throw', () => {
+  it('required variable present in .env.test does not throw', async () => {
     const root = createRepoRoot();
     seedFixtures(root, '.env.test');
 
@@ -137,11 +138,12 @@ describe('integration: .env.test file', () => {
     );
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('DB_PASSWORD')).toBe('test_password_123');
   });
 
-  it('required variable absent from .env.test throws at get() time', () => {
+  it('required variable absent from .env.test throws at get() time', async () => {
     const root = createRepoRoot();
     seedFixtures(root, '.env.test');
 
@@ -162,6 +164,7 @@ describe('integration: .env.test file', () => {
     );
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(() => manager.get('MISSING_VAR')).toThrow(/Required variable 'MISSING_VAR'/);
   });
@@ -170,7 +173,7 @@ describe('integration: .env.test file', () => {
 // ─── .env.prod ────────────────────────────────────────────────────────────────
 
 describe('integration: .env.prod file', () => {
-  it('loads all DB variables with correct types', () => {
+  it('loads all DB variables with correct types', async () => {
     const root = createRepoRoot();
     seedFixtures(root, '.env.prod');
 
@@ -202,6 +205,7 @@ describe('integration: .env.prod file', () => {
     );
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('DB_HOST')).toBe('prod-db.internal');
     expect(manager.get('DB_PORT')).toBe(5432);
@@ -210,7 +214,7 @@ describe('integration: .env.prod file', () => {
     expect(manager.get('DB_PASSWORD')).toBe('prod_password_xyz');
   });
 
-  it('strict mode throws on a variable missing from .env.prod', () => {
+  it('strict mode throws on a variable missing from .env.prod', async () => {
     const root = createRepoRoot();
     seedFixtures(root, '.env.prod');
 
@@ -230,11 +234,12 @@ describe('integration: .env.prod file', () => {
     );
 
     const manager = new ConfigManager(configPath, { strict: true });
+    await manager.load();
 
     expect(() => manager.get('NONEXISTENT')).toThrow(/Strict mode/);
   });
 
-  it('default value is used when variable is absent and not required', () => {
+  it('default value is used when variable is absent and not required', async () => {
     const root = createRepoRoot();
     seedFixtures(root, '.env.prod');
 
@@ -255,6 +260,7 @@ describe('integration: .env.prod file', () => {
     );
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('DB_POOL_SIZE')).toBe(10);
   });
@@ -263,7 +269,7 @@ describe('integration: .env.prod file', () => {
 // ─── Multi-environment switching ──────────────────────────────────────────────
 
 describe('integration: multi-environment switching between .env.test and .env.prod', () => {
-  it('selects .env.test values when APP_ENV=test', () => {
+  it('selects .env.test values when APP_ENV=test', async () => {
     const root = createRepoRoot();
     seedFixtures(root, '.env.test', '.env.prod');
 
@@ -296,6 +302,7 @@ describe('integration: multi-environment switching between .env.test and .env.pr
 
     vi.stubEnv('APP_ENV', 'test');
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.activeEnvironment?.name).toBe('test');
     expect(manager.get('DB_HOST')).toBe('localhost');
@@ -304,7 +311,7 @@ describe('integration: multi-environment switching between .env.test and .env.pr
     expect(manager.get('DB_PORT')).toBe(5432);
   });
 
-  it('selects .env.prod values when APP_ENV=prod', () => {
+  it('selects .env.prod values when APP_ENV=prod', async () => {
     const root = createRepoRoot();
     seedFixtures(root, '.env.test', '.env.prod');
 
@@ -337,6 +344,7 @@ describe('integration: multi-environment switching between .env.test and .env.pr
 
     vi.stubEnv('APP_ENV', 'prod');
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.activeEnvironment?.name).toBe('prod');
     expect(manager.get('DB_HOST')).toBe('prod-db.internal');
@@ -345,7 +353,7 @@ describe('integration: multi-environment switching between .env.test and .env.pr
     expect(manager.get('DB_PORT')).toBe(5432);
   });
 
-  it('defaults to .env.prod when APP_ENV is not set', () => {
+  it('defaults to .env.prod when APP_ENV is not set', async () => {
     const root = createRepoRoot();
     seedFixtures(root, '.env.test', '.env.prod');
 
@@ -368,12 +376,13 @@ describe('integration: multi-environment switching between .env.test and .env.pr
     );
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.activeEnvironment?.name).toBe('prod');
     expect(manager.get('DB_HOST')).toBe('prod-db.internal');
   });
 
-  it('per-variable environment pin reads from pinned env regardless of APP_ENV', () => {
+  it('per-variable environment pin reads from pinned env regardless of APP_ENV', async () => {
     const root = createRepoRoot();
     seedFixtures(root, '.env.test', '.env.prod');
 
@@ -401,6 +410,7 @@ describe('integration: multi-environment switching between .env.test and .env.pr
 
     vi.stubEnv('APP_ENV', 'test');
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     // Active env is test → DB_HOST from .env.test
     expect(manager.get('DB_HOST')).toBe('localhost');
@@ -408,7 +418,7 @@ describe('integration: multi-environment switching between .env.test and .env.pr
     expect(manager.get('PROD_DB_NAME')).toBe('app_prod');
   });
 
-  it('process.env override wins over .env file values', () => {
+  it('process.env override wins over .env file values', async () => {
     const root = createRepoRoot();
     seedFixtures(root, '.env.test');
 
@@ -430,6 +440,7 @@ describe('integration: multi-environment switching between .env.test and .env.pr
     vi.stubEnv('APP_ENV', 'test');
     vi.stubEnv('DB_HOST', 'injected-host');
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('DB_HOST')).toBe('injected-host');
   });
@@ -554,6 +565,7 @@ describe('integration: real GCP Secret Manager', () => {
       );
 
       const manager = new ConfigManager(configPath);
+      await manager.load();
 
       // All values sourced from process.env (pre-seeded from GCP above)
       expect(manager.get('DB_HOST')).toBe(gcpValues['DB_HOST']);

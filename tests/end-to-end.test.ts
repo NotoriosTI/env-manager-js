@@ -18,9 +18,9 @@ function createRepoRoot(): string {
 
 function createFakeLoader(values: Record<string, string | null>) {
   return {
-    get: vi.fn((key: string) => values[key] ?? null),
+    get: vi.fn((key: string) => Promise.resolve(values[key] ?? null)),
     getMany: vi.fn((keys: string[]) =>
-      Object.fromEntries(keys.map((key) => [key, values[key] ?? null])),
+      Promise.resolve(Object.fromEntries(keys.map((key) => [key, values[key] ?? null]))),
     ),
   };
 }
@@ -41,7 +41,7 @@ describe('end-to-end', () => {
     expect([ConfigManager, initConfig, getConfig, requireConfig]).toBeDefined();
   });
 
-  it('loads mixed sources in one eager pass', () => {
+  it('loads mixed sources in one eager pass', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -89,6 +89,7 @@ describe('end-to-end', () => {
     vi.stubEnv('APP_ENV', 'staging');
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('DEFAULT_TOKEN')).toBe('staging-value');
     expect(manager.get('OVERRIDE_TOKEN')).toBe('override-value');

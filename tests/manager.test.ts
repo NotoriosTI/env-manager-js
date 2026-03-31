@@ -50,12 +50,13 @@ afterEach(() => {
 });
 
 describe('ConfigManager', () => {
-  it('loads local .env, coerces types, and writes process.env', () => {
+  it('loads local .env, coerces types, and writes process.env', async () => {
     const tmpDir = createTempDir();
     const configPath = createConfig(tmpDir);
     const dotenvPath = writeEnv(tmpDir, 'DB_PASSWORD=secret123\n');
 
     const manager = new ConfigManager(configPath, { dotenvPath });
+    await manager.load();
 
     expect(manager.get('DB_PASSWORD')).toBe('secret123');
     expect(manager.get('PORT')).toBe(8080);
@@ -65,7 +66,7 @@ describe('ConfigManager', () => {
     expect(process.env.PORT).toBe('8080');
   });
 
-  it('throws on missing required variable', () => {
+  it('throws on missing required variable', async () => {
     const tmpDir = createTempDir();
     const configPath = writeConfig(
       tmpDir,
@@ -79,12 +80,13 @@ variables:
     );
     const dotenvPath = writeEnv(tmpDir, '');
 
-    expect(() => new ConfigManager(configPath, { dotenvPath })).toThrow(
+    const manager = new ConfigManager(configPath, { dotenvPath });
+    await expect(manager.load()).rejects.toThrow(
       "Required variable 'DB_PASSWORD' not found in source",
     );
   });
 
-  it('optional variable with default is quiet', () => {
+  it('optional variable with default is quiet', async () => {
     const tmpDir = createTempDir();
     const configPath = writeConfig(
       tmpDir,
@@ -100,12 +102,13 @@ variables:
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
     const manager = new ConfigManager(configPath, { dotenvPath });
+    await manager.load();
 
     expect(manager.get('OPTIONAL')).toBe('fallback-value');
     expect(warnSpy).not.toHaveBeenCalled();
   });
 
-  it('strict mode throws on any missing variable', () => {
+  it('strict mode throws on any missing variable', async () => {
     const tmpDir = createTempDir();
     const configPath = writeConfig(
       tmpDir,
@@ -118,12 +121,13 @@ variables:
     );
     const dotenvPath = writeEnv(tmpDir, '');
 
-    expect(() => new ConfigManager(configPath, { dotenvPath, strict: true })).toThrow(
+    const manager = new ConfigManager(configPath, { dotenvPath, strict: true });
+    await expect(manager.load()).rejects.toThrow(
       "Strict mode: variable 'DB_PASSWORD' is missing",
     );
   });
 
-  it('singleton API: initConfig, getConfig, requireConfig', () => {
+  it('singleton API: initConfig, getConfig, requireConfig', async () => {
     const tmpDir = createTempDir();
     const configPath = writeConfig(
       tmpDir,
@@ -139,14 +143,14 @@ variables:
 
     expect(() => requireConfig('X')).toThrow('Configuration manager not initialised. Call initConfig().');
 
-    initConfig(configPath, { dotenvPath });
+    await initConfig(configPath, { dotenvPath });
 
     expect(getConfig('DB_PASSWORD')).toBe('secret123');
     expect(requireConfig('DB_PASSWORD')).toBe('secret123');
     expect(() => requireConfig('NONEXISTENT')).toThrow("Required configuration 'NONEXISTENT' is missing");
   });
 
-  it('re-init logs warning', () => {
+  it('re-init logs warning', async () => {
     const tmpDir = createTempDir();
     const configPath = writeConfig(
       tmpDir,
@@ -161,13 +165,13 @@ variables:
     const dotenvPath = writeEnv(tmpDir, 'DB_PASSWORD=secret123\n');
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    initConfig(configPath, { dotenvPath });
-    initConfig(configPath, { dotenvPath });
+    await initConfig(configPath, { dotenvPath });
+    await initConfig(configPath, { dotenvPath });
 
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Configuration manager already initialised'));
   });
 
-  it('re-init keeps the original singleton instance and loaded state', () => {
+  it('re-init keeps the original singleton instance and loaded state', async () => {
     const firstTmpDir = createTempDir();
     const firstConfigPath = writeConfig(
       firstTmpDir,
@@ -198,8 +202,8 @@ variables:
     const secondDotenvPath = writeEnv(secondTmpDir, 'DB_PASSWORD=second-secret\nSECOND_ONLY=leaked-value\n');
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    const firstManager = initConfig(firstConfigPath, { dotenvPath: firstDotenvPath });
-    const secondManager = initConfig(secondConfigPath, { dotenvPath: secondDotenvPath });
+    const firstManager = await initConfig(firstConfigPath, { dotenvPath: firstDotenvPath });
+    const secondManager = await initConfig(secondConfigPath, { dotenvPath: secondDotenvPath });
 
     expect(secondManager).toBe(firstManager);
     expect(getConfig('DB_PASSWORD')).toBe('first-secret');
@@ -208,7 +212,7 @@ variables:
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Configuration manager already initialised'));
   });
 
-  it('reset/recreate clears cached loader state before rebuilding the singleton', () => {
+  it('reset/recreate clears cached loader state before rebuilding the singleton', async () => {
     const tmpDir = createTempDir();
     const configPath = writeConfig(
       tmpDir,
@@ -222,19 +226,19 @@ variables:
     );
     const dotenvPath = writeEnv(tmpDir, 'DB_PASSWORD=first-secret\n');
 
-    initConfig(configPath, { dotenvPath });
+    await initConfig(configPath, { dotenvPath });
     expect(getConfig('DB_PASSWORD')).toBe('first-secret');
 
     writeEnv(tmpDir, 'DB_PASSWORD=second-secret\n');
     _resetSingleton();
 
-    initConfig(configPath, { dotenvPath });
+    await initConfig(configPath, { dotenvPath });
 
     expect(getConfig('DB_PASSWORD')).toBe('second-secret');
     expect(process.env.DB_PASSWORD).toBe('second-secret');
   });
 
-  it('debug mode disables masking in logs', () => {
+  it('debug mode disables masking in logs', async () => {
     const tmpDir = createTempDir();
     const configPath = writeConfig(
       tmpDir,
@@ -249,12 +253,13 @@ variables:
     const dotenvPath = writeEnv(tmpDir, 'DB_PASSWORD=secret123\n');
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-    new ConfigManager(configPath, { dotenvPath, debug: true });
+    const manager = new ConfigManager(configPath, { dotenvPath, debug: true });
+    await manager.load();
 
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Loaded DB_PASSWORD: secret123'));
   });
 
-  it('normal mode logs masked loaded values using maskSecret semantics', () => {
+  it('normal mode logs masked loaded values using maskSecret semantics', async () => {
     const tmpDir = createTempDir();
     const configPath = writeConfig(
       tmpDir,
@@ -270,13 +275,14 @@ variables:
     const dotenvPath = writeEnv(tmpDir, `DB_PASSWORD=${rawValue}\n`);
     const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-    new ConfigManager(configPath, { dotenvPath });
+    const manager = new ConfigManager(configPath, { dotenvPath });
+    await manager.load();
 
     expect(logSpy).toHaveBeenCalledWith(`Loaded DB_PASSWORD: ${maskSecret(rawValue)}`);
     expect(logSpy).not.toHaveBeenCalledWith(`Loaded DB_PASSWORD: ${rawValue}`);
   });
 
-  it('missing dotenv is deferred when process.env has value', () => {
+  it('missing dotenv is deferred when process.env has value', async () => {
     const tmpDir = createTempDir();
     const configPath = writeConfig(
       tmpDir,
@@ -297,11 +303,12 @@ variables:
     process.env.DB_PASSWORD = 'from-env';
 
     const manager = new ConfigManager(configPath);
+    await manager.load();
 
     expect(manager.get('DB_PASSWORD')).toBe('from-env');
   });
 
-  it('missing dotenv throws with absolute path when lookup needed', () => {
+  it('missing dotenv throws with absolute path when lookup needed', async () => {
     const tmpDir = createTempDir();
     const configPath = writeConfig(
       tmpDir,
@@ -319,9 +326,10 @@ variables:
 `,
     );
 
+    const manager = new ConfigManager(configPath);
     try {
-      new ConfigManager(configPath);
-      expect.unreachable('Expected ConfigManager to throw for missing active environment dotenv');
+      await manager.load();
+      expect.unreachable('Expected load() to throw for missing active environment dotenv');
     } catch (error) {
       expect(error).toBeInstanceOf(Error);
       const message = (error as Error).message;
@@ -331,5 +339,20 @@ variables:
       expect(isAbsolute(match![1])).toBe(true);
       expect(message).toContain("environment 'default'");
     }
+  });
+
+  it('constructor does not call load() — autoLoad removed', async () => {
+    const tmpDir = createTempDir();
+    const configPath = createConfig(tmpDir);
+    const dotenvPath = writeEnv(tmpDir, 'DB_PASSWORD=secret123\n');
+
+    const manager = new ConfigManager(configPath, { dotenvPath });
+    // Before load(), _loaded is false — get() should throw with "not loaded" message
+    delete process.env.DB_PASSWORD;
+    expect(() => manager.get('DB_PASSWORD')).toThrow('ConfigManager not loaded');
+
+    // Now explicitly load
+    await manager.load();
+    expect(manager.get('DB_PASSWORD')).toBe('secret123');
   });
 });
