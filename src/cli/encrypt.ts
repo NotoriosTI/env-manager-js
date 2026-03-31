@@ -120,3 +120,71 @@ export async function encryptDotenvFile(options: EncryptOptions): Promise<Encryp
 
   return { publicKeyHex, privateKeyHex, encryptedCount, skippedCount };
 }
+
+function printUsage(): void {
+  console.log(`Usage: env-manager-encrypt <file> [options]
+
+Encrypt a .env file using dotenvx-compatible ECIES encryption.
+
+Arguments:
+  file            Path to the .env file to encrypt
+
+Options:
+  --env <name>    Environment name (writes DOTENV_PRIVATE_KEY_<NAME> in .env.keys)
+  --force         Overwrite existing .env.keys file
+  --help          Show this help message`);
+}
+
+async function main(): Promise<void> {
+  const args = process.argv.slice(2);
+
+  if (args.includes('--help') || args.length === 0) {
+    printUsage();
+    process.exit(args.includes('--help') ? 0 : 1);
+    return;
+  }
+
+  // Parse arguments
+  let filePath: string | undefined;
+  let env: string | undefined;
+  let force = false;
+
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === '--env' && i + 1 < args.length) {
+      env = args[++i];
+    } else if (args[i] === '--force') {
+      force = true;
+    } else if (!args[i].startsWith('--')) {
+      filePath = args[i];
+    }
+  }
+
+  if (!filePath) {
+    console.error('Error: No file path provided');
+    printUsage();
+    process.exit(1);
+    return;
+  }
+
+  try {
+    const result = await encryptDotenvFile({ filePath, env, force });
+    console.log(`Encrypted ${result.encryptedCount} value(s), skipped ${result.skippedCount} already-encrypted value(s)`);
+    console.log(`Public key:  ${result.publicKeyHex}`);
+    console.log(`Private key written to .env.keys`);
+  } catch (err) {
+    console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
+    process.exit(1);
+  }
+}
+
+// Only run main() when this file is the direct entry point (not when imported by tests or library consumers)
+const isMain = process.argv[1] != null && (
+  process.argv[1].endsWith('/encrypt.js') ||
+  process.argv[1].endsWith('/encrypt.ts') ||
+  process.argv[1].endsWith('\\encrypt.js') ||
+  process.argv[1].endsWith('\\encrypt.ts')
+);
+
+if (isMain) {
+  main();
+}

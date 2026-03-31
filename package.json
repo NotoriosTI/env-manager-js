@@ -6,6 +6,9 @@
   "version": "0.1.2",
   "description": "",
   "type": "module",
+  "bin": {
+    "env-manager-encrypt": "./dist/encrypt.js"
+  },
   "main": "./dist/index.cjs",
   "types": "./dist/index.d.ts",
   "exports": {
