@@ -1,6 +1,22 @@
 # Milestones
 
-## v1.1 Post-Launch Housekeeping (Shipped: 2026-03-31)
+## v0.1.2 Async API Refactor (Shipped: 2026-03-31)
+
+**GitHub tag:** v0.1.2
+
+**Key accomplishments:**
+- Removed `autoLoad` footgun from `ConfigManagerOptions` (unawaited promise risk).
+- Removed `MaybePromise<T>` and `isPromiseLike` dead code from `types.ts`.
+- Made `SecretLoader` interface fully async (`get`/`getMany` return `Promise`).
+- Made `DotEnvLoader.get`/`getMany` async to satisfy the updated interface.
+- Refactored `ConfigManager.load()` to explicitly `await` all loader calls; removed lazy sync fetch paths from `get()`.
+- Parallelized `GCPSecretLoader.getMany` with `Promise.all` instead of sequential `await`.
+- Migrated all affected tests to explicit `await load()` pattern; removed dead lazy-loader call sites.
+- Bumped version `0.1.1 → 0.1.2`.
+
+---
+
+## v0.1.1 Post-Launch Housekeeping (Shipped: 2026-03-31)
 
 **GitHub tag:** v0.1.1
 

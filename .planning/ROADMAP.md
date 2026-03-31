@@ -9,10 +9,13 @@ Behavior-preserving TypeScript port of the Python `env-manager` library, publish
 ## Milestones
 
 - ✅ **v1.0 Initial Release** — Phases 1-11 ([archive](./milestones/v1.0-ROADMAP.md)) — shipped 2026-03-31
+- ✅ **v0.1.1 Post-Launch Housekeeping** — README, package rename, deprecation fixes — shipped 2026-03-31
+- ✅ **v0.1.2 Async API Refactor** — Phase 1 (2 plans) — shipped 2026-03-31
 
 ## Current State
 
 - No active milestone is planned yet.
+- Backlog for the next milestone: [BACKLOG.md](./BACKLOG.md)
 - Start the next milestone with `$gsd-new-milestone`, which will create a fresh `.planning/REQUIREMENTS.md` and extend the roadmap from this shipped baseline.
 
 ## Progress
@@ -20,6 +23,8 @@ Behavior-preserving TypeScript port of the Python `env-manager` library, publish
 | Milestone | Phases | Plans | Status | Shipped |
 |-----------|--------|-------|--------|---------|
 | v1.0 Initial Release | 1-11 | 40/40 | Complete | 2026-03-31 |
+| v0.1.1 Post-Launch Housekeeping | — | — | Complete | 2026-03-31 |
+| v0.1.2 Async API Refactor | 1 | 2/2 | Complete | 2026-03-31 |
 
 ### Phase 1: Refactor ConfigManager async API: Option A (async init, sync get) + Option B (parallel GCP fetches). Move all async work into initConfig/load() so getConfig() is always synchronous. Parallelize GCPSecretLoader.getMany with Promise.all instead of sequential await.
 

@@ -10,9 +10,11 @@ Behavior parity with the Python implementation remains the primary value. Packag
 
 ## Current State
 
-- Shipped milestone: **v1.0 Initial Release** on 2026-03-31
+- Current npm version: **0.1.2**
+- Last shipped milestone: **v0.1.2 Async API Refactor** on 2026-03-31
+- Prior milestone: **v1.0 Initial Release** on 2026-03-31
 - Runtime status: Typecheck, test suite, build, publint, `attw --pack`, and real-GCP verification all passed at milestone closeout
-- Codebase snapshot: 11 completed phases, 40 completed plans, roughly 4.7k lines across `src/` and `tests/`
+- Codebase snapshot: 11 completed v1.0 phases + 1 post-launch phase, 42 completed plans, roughly 4.7k lines across `src/` and `tests/`
 
 ## Requirements
 
@@ -71,4 +73,4 @@ Initial project framing focused on port completion, TDD sequencing, and publish 
 </details>
 
 ---
-*Last updated: 2026-03-31 after v1.0 milestone completion*
+*Last updated: 2026-03-31 after v0.1.2 async API refactor*
