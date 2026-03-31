@@ -248,7 +248,7 @@ describe('TestEnvironmentSelection', () => {
     }
   });
 
-  it('manager-driven GCP selection resolves async loader results before returning required values', () => {
+  it('manager-driven GCP selection resolves async loader results before returning required values', async () => {
     const repoRoot = createTempDir();
     try {
       const configPath = writeRepoConfig(
@@ -280,7 +280,7 @@ describe('TestEnvironmentSelection', () => {
 
       const manager = new ConfigManager(configPath);
 
-      expect(manager.get('payment_token')).toBe('payment-token');
+      await expect(manager.get('payment_token')).resolves.toBe('payment-token');
       expect(process.env.PAYMENT_TOKEN).toBe('payment-token');
     } finally {
       cleanupTempDir(repoRoot);

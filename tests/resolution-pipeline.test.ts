@@ -154,7 +154,7 @@ describe('resolution pipeline', () => {
     );
   });
 
-  it('per-variable origin:gcp override resolves async loader batches before get()', () => {
+  it('per-variable origin:gcp override resolves async loader batches before get()', async () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(
       repoRoot,
@@ -186,7 +186,7 @@ describe('resolution pipeline', () => {
 
     const manager = new ConfigManager(configPath);
 
-    expect(manager.get('GCP_SECRET')).toBe('from-async-gcp-loader');
+    await expect(manager.get('GCP_SECRET')).resolves.toBe('from-async-gcp-loader');
   });
 
   it('process.env beats pinned environment lookup', () => {

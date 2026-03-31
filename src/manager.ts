@@ -6,6 +6,7 @@ import dotenv from 'dotenv';
 import type {
   ConfigManagerOptions,
   EnvironmentConfig,
+  MaybePromise,
   SecretOrigin,
   SourceContext,
   ValidationConfig,
@@ -81,6 +82,10 @@ function resolvePath(p: string, projectRoot: string): string {
   return isAbsolute(p) ? p : join(projectRoot, p);
 }
 
+function isPromiseLike<T>(value: MaybePromise<T>): value is Promise<T> {
+  return typeof value === 'object' && value !== null && 'then' in value;
+}
+
 export class ConfigManager {
   readonly activeEnvironment: EnvironmentConfig | null = null;
 
@@ -99,6 +104,7 @@ export class ConfigManager {
   private readonly _dotenvValues: Record<string, string>;
   private _values: Record<string, unknown> = {};
   private _loaded = false;
+  private _loadingPromise: Promise<void> | null = null;
 
   constructor(configPath: string, options?: ConfigManagerOptions) {
     // 1. Resolve configPath to absolute
@@ -387,24 +393,30 @@ export class ConfigManager {
     _processEnvWrites.add(key);
   }
 
-  load(): void {
+  load(): MaybePromise<void> {
     if (this._loaded) return;
+    if (this._loadingPromise !== null) return this._loadingPromise;
 
-    if (this._hasEnvironments) {
-      // NEW FORMAT: Group sourced variables by loader context and batch-fetch via getMany().
-      // Validation (required/strict) is deferred to get().
-      this._loadNewFormat();
-    } else {
-      // OLD FORMAT: Use pre-read _dotenvValues + direct process.env check.
-      // Validation (required/strict) happens here in load().
-      this._loadOldFormat();
+    const loadResult = this._hasEnvironments
+      ? this._loadNewFormat()
+      : this._loadOldFormat();
+
+    if (isPromiseLike(loadResult)) {
+      this._loadingPromise = loadResult.then(() => {
+        this._loaded = true;
+        this._loadingPromise = null;
+      });
+      return this._loadingPromise;
     }
 
     this._loaded = true;
   }
 
-  private _loadNewFormat(): void {
-    // Classify variables: sourced (have explicit source key) vs default-only (no source key)
+  private _loadNewFormat(): MaybePromise<void> {
+    if (this._hasEnvironments) {
+      // Classify variables: sourced (have explicit source key) vs default-only (no source key)
+    }
+
     interface SourcingInfo {
       name: string;
       def: VariableDefinition;
@@ -438,6 +450,8 @@ export class ConfigManager {
       groups.get(key)!.push(info);
     }
 
+    const groupLoads: Promise<void>[] = [];
+
     // Fetch each group
     for (const [, groupInfos] of groups) {
       const { secretOrigin, gcpProjectId, dotenvPath } = groupInfos[0].ctx;
@@ -455,13 +469,48 @@ export class ConfigManager {
       }
 
       // Fetch remaining vars from file/GCP
-      let fileResults: Record<string, string | null> = {};
+      const storeGroupResults = (fileResults: Record<string, string | null>): void => {
+        for (const info of groupInfos) {
+          const { name, def, sourceKey } = info;
 
-      if (needFile.length > 0) {
+          let rawValue: unknown = null;
+          if (fromProcessEnv.has(name)) {
+            rawValue = fromProcessEnv.get(name)!;
+          } else {
+            const fileVal = fileResults[sourceKey];
+            if (fileVal !== null && fileVal !== undefined) {
+              rawValue = fileVal;
+            }
+          }
+
+          if (rawValue === null && def.default !== undefined && def.required !== true) {
+            rawValue = def.default;
+          }
+
+          let coerced: unknown = rawValue;
+          if (rawValue !== null && def.type != null) {
+            coerced = coerceType(rawValue, def.type, name);
+          }
+
+          this._values[name] = coerced;
+
+          if (coerced !== null) {
+            this._writeProcessEnv(sourceKey, String(coerced));
+            if (this._debug) {
+              console.log(`Loaded ${name}: ${String(coerced)}`);
+            }
+          }
+        }
+      };
+
+      const resolveFileResults = (): MaybePromise<Record<string, string | null>> => {
+        if (needFile.length === 0) {
+          return {};
+        }
+
         if (secretOrigin === 'local') {
-          // LOCAL ORIGIN: read dotenv file directly — do NOT go through createLoader
+          const fileResults: Record<string, string | null> = {};
           if (dotenvPath != null && existsSync(dotenvPath)) {
-            // File exists: parse it
             try {
               const parsed = dotenv.parse(readFileSync(dotenvPath));
               for (const info of needFile) {
@@ -473,76 +522,43 @@ export class ConfigManager {
               }
             }
           } else if (dotenvPath != null) {
-            // File is missing: determine whether to throw now or defer
-            // Per-variable dotenv_path overrides: defer to get()
-            // Environment-level dotenv_path: fail now if any var lacks a per-variable override
             const envLevelVars = needFile.filter((i) => !i.hasPerVarDotenvPath);
             if (envLevelVars.length > 0) {
-              // At least one var depends on the missing env-level file: throw now with context
               const ctx = envLevelVars[0].ctx;
               const ctxLabel = buildContextLabel(ctx);
               throw new Error(
                 `DotEnvLoader: dotenv file not found: ${dotenvPath} (${ctxLabel})`,
               );
             }
-            // All vars have per-variable overrides: defer (store null, throw at get() time)
             for (const info of needFile) {
               fileResults[info.sourceKey] = null;
             }
           } else {
-            // No dotenvPath (local with no file path): all null
             for (const info of needFile) {
               fileResults[info.sourceKey] = null;
             }
           }
-        } else {
-          // GCP origin: use createLoader
-          const loader = createLoader({ secretOrigin, gcpProjectId, dotenvPath });
-          const loaderSourceKeys = needFile.map((i) => i.sourceKey);
-          fileResults = loader.getMany(loaderSourceKeys) as Record<string, string | null>;
+          return fileResults;
         }
+
+        const loader = createLoader({ secretOrigin, gcpProjectId, dotenvPath });
+        return loader.getMany(needFile.map((i) => i.sourceKey));
+      };
+
+      const fileResults = resolveFileResults();
+      if (isPromiseLike(fileResults)) {
+        groupLoads.push(fileResults.then((resolved) => storeGroupResults(resolved)));
+      } else {
+        storeGroupResults(fileResults);
       }
+    }
 
-      // Merge results and store
-      for (const info of groupInfos) {
-        const { name, def, sourceKey } = info;
-
-        let rawValue: unknown = null;
-        if (fromProcessEnv.has(name)) {
-          rawValue = fromProcessEnv.get(name)!;
-        } else {
-          const fileVal = fileResults[sourceKey];
-          if (fileVal !== null && fileVal !== undefined) {
-            rawValue = fileVal;
-          }
-        }
-
-        // Apply default if null — but NOT for required:true vars
-        // (get() handles required+default by emitting a warning before returning the default)
-        if (rawValue === null && def.default !== undefined && def.required !== true) {
-          rawValue = def.default;
-        }
-
-        // Coerce type
-        let coerced: unknown = rawValue;
-        if (rawValue !== null && def.type != null) {
-          coerced = coerceType(rawValue, def.type, name);
-        }
-
-        this._values[name] = coerced;
-
-        // Write non-null values to process.env
-        if (coerced !== null) {
-          this._writeProcessEnv(sourceKey, String(coerced));
-          if (this._debug) {
-            console.log(`Loaded ${name}: ${String(coerced)}`);
-          }
-        }
-      }
+    if (groupLoads.length > 0) {
+      return Promise.all(groupLoads).then(() => {});
     }
   }
 
-  private _loadOldFormat(): void {
+  private _loadOldFormat(): MaybePromise<void> {
     // OLD FORMAT (no environments section): use createLoader for explicit-source vars.
     // Validation (required/strict) happens here in load(), not deferred to get().
 
@@ -584,65 +600,73 @@ export class ConfigManager {
     }
 
     // Batch-fetch remaining via createLoader (DotEnvLoader or GCPSecretLoader)
-    let loaderResults: Record<string, string | null> = {};
+    const storeLoaderResults = (loaderResults: Record<string, string | null>): void => {
+      for (const info of sourcedVars) {
+        const { name, def, sourceKey } = info;
+
+        let rawValue: unknown = null;
+        if (fromProcessEnv.has(name)) {
+          rawValue = fromProcessEnv.get(name)!;
+        } else {
+          const loaderVal = loaderResults[sourceKey];
+          if (loaderVal !== null && loaderVal !== undefined) {
+            rawValue = loaderVal;
+          }
+        }
+
+        if (rawValue === null && def.default !== undefined) {
+          rawValue = def.default;
+        }
+
+        if (rawValue === null) {
+          if (this._strict) {
+            throw new Error(`Strict mode: variable '${name}' is missing`);
+          }
+          if (def.required === true) {
+            throw new Error(`Required variable '${name}' not found in source`);
+          }
+          this._values[name] = null;
+          continue;
+        }
+
+        let coerced: unknown = rawValue;
+        if (def.type != null) {
+          coerced = coerceType(rawValue, def.type, name);
+        }
+
+        this._values[name] = coerced;
+
+        if (coerced !== null) {
+          this._writeProcessEnv(sourceKey, String(coerced));
+          if (this._debug) {
+            console.log(`Loaded ${name}: ${String(coerced)}`);
+          }
+        }
+      }
+    };
+
+    let loaderResults: MaybePromise<Record<string, string | null>> = {};
     if (needLoader.length > 0) {
       const loader = createLoader({ secretOrigin, gcpProjectId, dotenvPath });
       const loaderSourceKeys = needLoader.map((i) => i.sourceKey);
-      loaderResults = loader.getMany(loaderSourceKeys) as Record<string, string | null>;
+      loaderResults = loader.getMany(loaderSourceKeys);
     }
 
-    // Store results
-    for (const info of sourcedVars) {
-      const { name, def, sourceKey } = info;
-
-      let rawValue: unknown = null;
-      if (fromProcessEnv.has(name)) {
-        rawValue = fromProcessEnv.get(name)!;
-      } else {
-        const loaderVal = loaderResults[sourceKey];
-        if (loaderVal !== null && loaderVal !== undefined) {
-          rawValue = loaderVal;
-        }
-      }
-
-      // Apply default if null
-      if (rawValue === null && def.default !== undefined) {
-        rawValue = def.default;
-      }
-
-      // OLD FORMAT: validate missing here (not deferred to get())
-      if (rawValue === null) {
-        if (this._strict) {
-          throw new Error(`Strict mode: variable '${name}' is missing`);
-        }
-        if (def.required === true) {
-          throw new Error(`Required variable '${name}' not found in source`);
-        }
-        this._values[name] = null;
-        continue;
-      }
-
-      // Coerce type
-      let coerced: unknown = rawValue;
-      if (def.type != null) {
-        coerced = coerceType(rawValue, def.type, name);
-      }
-
-      this._values[name] = coerced;
-
-      // Write to process.env
-      if (coerced !== null) {
-        this._writeProcessEnv(sourceKey, String(coerced));
-        if (this._debug) {
-          console.log(`Loaded ${name}: ${String(coerced)}`);
-        }
-      }
+    if (isPromiseLike(loaderResults)) {
+      return loaderResults.then((resolved) => {
+        storeLoaderResults(resolved);
+      });
     }
+
+    storeLoaderResults(loaderResults);
   }
 
-  get(name: string): unknown | null {
+  get(name: string): MaybePromise<unknown | null> {
     if (!this._loaded) {
-      this.load();
+      const loadResult = this.load();
+      if (isPromiseLike(loadResult)) {
+        return loadResult.then(() => this.get(name));
+      }
     }
 
     const def = this._variables[name];
@@ -685,6 +709,18 @@ export class ConfigManager {
             // Try to read the file (may throw DotEnvLoader error with file path)
             const loader = createLoader({ secretOrigin: ctx.secretOrigin, gcpProjectId: ctx.gcpProjectId, dotenvPath: ctx.dotenvPath });
             const result = loader.get(sourceKey); // throws if file missing
+            if (isPromiseLike(result)) {
+              return result.then((resolved) => {
+                if (resolved === null) {
+                  return this._handleMissingLoadedValue(name, def, ctx, sourceKey);
+                }
+                let coerced: unknown = resolved;
+                if (def.type != null) coerced = coerceType(resolved, def.type, name);
+                this._values[name] = coerced;
+                if (coerced !== null) this._writeProcessEnv(sourceKey, String(coerced));
+                return coerced as unknown;
+              });
+            }
             if (result !== null) {
               let coerced: unknown = result;
               if (def.type != null) coerced = coerceType(result, def.type, name);
@@ -695,29 +731,7 @@ export class ConfigManager {
             // Still null after re-fetch: fall through to required/strict checks
           }
 
-          if (this._strict) {
-            throw new Error(
-              `Strict mode: variable '${name}' is missing from source '${sourceKey}' in ${ctxLabel}.`,
-            );
-          }
-          if (def.required === true) {
-            if (def.default !== undefined) {
-              // Required but has default and was missing from source → warn and return default
-              console.warn(
-                `Required variable '${name}' missing from source; using YAML default for source '${sourceKey}' in ${ctxLabel}.`,
-              );
-              return def.default as unknown;
-            }
-            throw new Error(
-              `Required variable '${name}' not found in source '${sourceKey}' for ${ctxLabel}.`,
-            );
-          }
-          if (def.required === false) {
-            console.warn(
-              `Optional variable '${name}' resolved to None because source '${sourceKey}' was unavailable in ${ctxLabel}.`,
-            );
-            return null;
-          }
+          return this._handleMissingLoadedValue(name, def, ctx, sourceKey, ctxLabel);
         } else {
           // OLD FORMAT or default-only var: simple required/optional check
           if (def?.required === true) {
@@ -785,8 +799,16 @@ export class ConfigManager {
               dotenvPath: ctx.dotenvPath,
             });
             const result = loader.get(sourceKey);
+            if (isPromiseLike(result)) {
+              return result
+                .then((resolved) => this._finalizeLazyValue(name, sourceKey, def, resolved))
+                .catch(() => {
+                  if (def.default !== undefined) return def.default as unknown;
+                  return null;
+                });
+            }
             if (result !== null && result !== undefined) {
-              rawValue = result as string;
+              rawValue = result;
             }
           } catch {
             // Loader unavailable (test mock without get(), missing file, etc.)
@@ -834,8 +856,13 @@ export class ConfigManager {
           dotenvPath: ctx.dotenvPath,
         });
         const result = loader.get(sourceKey);
+        if (isPromiseLike(result)) {
+          return result
+            .then((resolved) => this._finalizeLazyValue(name, sourceKey, def, resolved, ctx))
+            .catch(() => this._handleMissingLazyValue(name, def, ctx, sourceKey));
+        }
         if (result !== null && result !== undefined) {
-          rawValue = result as string;
+          rawValue = result;
         }
       } catch {
         rawValue = null;
@@ -876,6 +903,92 @@ export class ConfigManager {
 
     return coerced as unknown;
   }
+
+  private _handleMissingLoadedValue(
+    name: string,
+    def: VariableDefinition,
+    ctx: SourceContext,
+    sourceKey: string,
+    ctxLabel: string = buildContextLabel(ctx),
+  ): unknown | null {
+    if (this._strict) {
+      throw new Error(
+        `Strict mode: variable '${name}' is missing from source '${sourceKey}' in ${ctxLabel}.`,
+      );
+    }
+    if (def.required === true) {
+      if (def.default !== undefined) {
+        console.warn(
+          `Required variable '${name}' missing from source; using YAML default for source '${sourceKey}' in ${ctxLabel}.`,
+        );
+        return def.default as unknown;
+      }
+      throw new Error(
+        `Required variable '${name}' not found in source '${sourceKey}' for ${ctxLabel}.`,
+      );
+    }
+    if (def.required === false) {
+      console.warn(
+        `Optional variable '${name}' resolved to None because source '${sourceKey}' was unavailable in ${ctxLabel}.`,
+      );
+    }
+    return null;
+  }
+
+  private _handleMissingLazyValue(
+    name: string,
+    def: VariableDefinition,
+    ctx: SourceContext,
+    sourceKey: string,
+  ): unknown | null {
+    if (def.default !== undefined) {
+      return def.default as unknown;
+    }
+
+    const ctxLabel = buildContextLabel(ctx);
+    if (this._strict) {
+      throw new Error(
+        `Strict mode: variable '${name}' is missing from source '${sourceKey}' in ${ctxLabel}.`,
+      );
+    }
+    if (def.required === true) {
+      throw new Error(
+        `Required variable '${name}' not found in source '${sourceKey}' for ${ctxLabel}.`,
+      );
+    }
+    if (def.required === false) {
+      console.warn(
+        `Optional variable '${name}' resolved to None because source '${sourceKey}' was unavailable in ${ctxLabel}.`,
+      );
+    }
+    return null;
+  }
+
+  private _finalizeLazyValue(
+    name: string,
+    sourceKey: string,
+    def: VariableDefinition,
+    rawValue: unknown,
+    ctx?: SourceContext,
+  ): unknown | null {
+    let value = rawValue;
+    if (value === null || value === undefined) {
+      if (ctx !== undefined) {
+        return this._handleMissingLazyValue(name, def, ctx, sourceKey);
+      }
+      if (def.default !== undefined) {
+        value = def.default;
+      } else {
+        return null;
+      }
+    }
+
+    let coerced: unknown = value;
+    if (def.type != null) coerced = coerceType(value, def.type, name);
+    this._values[name] = coerced;
+    if (coerced !== null) this._writeProcessEnv(sourceKey, String(coerced));
+    return coerced as unknown;
+  }
 }
 
 export function initConfig(configPath: string, options?: ConfigManagerOptions): ConfigManager {
@@ -887,7 +1000,7 @@ export function initConfig(configPath: string, options?: ConfigManagerOptions): 
   return singleton;
 }
 
-export function getConfig(name?: string): unknown | null {
+export function getConfig(name?: string): MaybePromise<unknown | null> {
   if (singleton === null) {
     return null;
   }
@@ -897,7 +1010,7 @@ export function getConfig(name?: string): unknown | null {
   return singleton.get(name);
 }
 
-export function requireConfig(name?: string): unknown {
+export function requireConfig(name?: string): MaybePromise<unknown> {
   if (singleton === null) {
     throw new Error('Configuration manager not initialised. Call initConfig().');
   }
@@ -905,6 +1018,14 @@ export function requireConfig(name?: string): unknown {
     return singleton;
   }
   const value = singleton.get(name);
+  if (isPromiseLike(value)) {
+    return value.then((resolved) => {
+      if (resolved === null || resolved === undefined) {
+        throw new Error(`Required configuration '${name}' is missing`);
+      }
+      return resolved;
+    });
+  }
   if (value === null || value === undefined) {
     throw new Error(`Required configuration '${name}' is missing`);
   }

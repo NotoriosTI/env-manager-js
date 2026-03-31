@@ -2,11 +2,11 @@ export type SecretOrigin = 'local' | 'gcp';
 
 export type VariableType = 'str' | 'int' | 'float' | 'bool';
 
+export type MaybePromise<T> = T | Promise<T>;
+
 export interface SecretLoader {
-  get(key: string): string | null | Promise<string | null>;
-  getMany(
-    keys: readonly string[],
-  ): Record<string, string | null> | Promise<Record<string, string | null>>;
+  get(key: string): MaybePromise<string | null>;
+  getMany(keys: readonly string[]): MaybePromise<Record<string, string | null>>;
 }
 
 export interface EnvironmentConfig {
