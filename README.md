@@ -509,7 +509,7 @@ When `encrypted_dotenv.enabled: true`, the manager resolves the private key in t
 2. `DOTENV_PRIVATE_KEY` — generic key
 3. `.env.keys` file in the same directory as the dotenv file
 
-### Dedicated Private Key Source (`privateKey` config)
+### Dedicated Private Key Source (`private_key` config)
 
 For production use cases where the private key is stored in GCP Secret Manager or a separate `.env` file, configure a dedicated source:
 
@@ -520,10 +520,10 @@ environments:
     dotenv_path: .env.production
     encrypted_dotenv:
       enabled: true
-      privateKey:
+      private_key:
         source: MY_DOTENV_PRIVATE_KEY
-        secretOrigin: gcp
-        gcpProjectId: my-project-prod
+        secret_origin: gcp
+        gcp_project_id: my-project-prod
 ```
 
 `PrivateKeyConfig` fields:
@@ -531,9 +531,9 @@ environments:
 | Field | Type | Description |
 |-------|------|-------------|
 | `source` | `string` | Key name to look up in the loader. |
-| `secretOrigin` | `local \| gcp` | Whether to fetch from a local dotenv file or GCP Secret Manager. |
-| `dotenvPath` | `string \| null` | Path to the dotenv file (only for `local` origin). |
-| `gcpProjectId` | `string \| null` | GCP project ID (only for `gcp` origin). |
+| `secret_origin` | `local \| gcp` | Whether to fetch from a local dotenv file or GCP Secret Manager. |
+| `dotenv_path` | `string \| null` | Path to the dotenv file (only for `local` origin). |
+| `gcp_project_id` | `string \| null` | GCP project ID (only for `gcp` origin). |
 
 ### Errors
 

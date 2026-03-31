@@ -30,7 +30,7 @@ See: `.planning/PROJECT.md` (updated 2026-03-31)
 Phase: 03.1 (add-cli-script-to-encrypt-dotenv-files-with-key-management) — COMPLETED
 Plan: 2 of 2 (all complete)
 Status: Phase complete, milestone ready for next phase
-Last activity: 2026-03-31
+Last activity: 2026-03-31 - Completed quick task 260331-naw: Update README.md for Milestone 2 features
 
 Progress: [██████████] 100%
 
@@ -72,7 +72,7 @@ Progress: [██████████] 100%
 | # | Description | Date | Commit | Directory |
 |---|-------------|------|--------|-----------|
 | 260331-k8v | Add NotImplementedError when secretOrigin is non-local with encrypted dotenv | 2026-03-31 | b8ac608 | [260331-k8v-add-notimplementederror-when-secretorigi](./quick/260331-k8v-add-notimplementederror-when-secretorigi/) |
-| Phase 03.1-add-cli-script-to-encrypt-dotenv-files-with-key-management P01 | 3 | 1 tasks | 2 files |
+| 260331-naw | Update README.md for Milestone 2 features (encrypted dotenv, CLI encrypt, ConfigValidationError) | 2026-03-31 | 5b970d0 | [260331-naw-analyze-the-current-state-and-package-re](./quick/260331-naw-analyze-the-current-state-and-package-re/) |
 
 ### Pending Todos
 
