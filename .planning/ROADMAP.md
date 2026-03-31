@@ -23,6 +23,7 @@ Behavior-preserving TypeScript port of the Python `env-manager` library, now pla
 
 - [x] **Phase 02: Validation Diagnostics** - Aggregate `load()` validation failures into one exported error without changing existing strictness behavior. (completed 2026-03-31)
 - [x] **Phase 03: Encrypted Dotenv Support** - Add opt-in dotenvx-compatible encrypted value decryption with explicit key resolution and error typing. (completed 2026-03-31)
+- [x] **Phase 03.1: CLI Encryption Script** - Add CLI script to encrypt dotenv files with automatic key management. (completed 2026-03-31)
 - [ ] **Phase 04: Generic Typed Retrieval** - Add typed `getConfig` and `requireConfig` overloads with optional validator-backed parsing while preserving existing callers.
 - [ ] **Phase 05: Schema-Safe Config Access** - Add `createTypedConfig(schema)` for compile-time key safety on top of a validator-agnostic typed retrieval foundation.
 - [ ] **Phase 06: Runtime Ergonomics** - Add injectable logger support and opt-in dotenv expansion without changing defaults for existing consumers.
@@ -66,11 +67,11 @@ Plans:
 **Goal:** Users can encrypt plaintext .env files into dotenvx-compatible encrypted format with automatic key pair generation and .env.keys file output.
 **Requirements**: CLI-01, CLI-02, CLI-03, CLI-04, CLI-05, CLI-06, CLI-07, CLI-08, CLI-09
 **Depends on:** Phase 03
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans executed (COMPLETED 2026-03-31)
 
 Plans:
 - [x] 03.1-01-PLAN.md — Implement core encryption module with TDD tests for key generation, value encryption, round-trip verification, and edge cases
-- [ ] 03.1-02-PLAN.md — Wire CLI entry point with arg parsing, tsup multi-entry build, and package.json bin registration
+- [x] 03.1-02-PLAN.md — Wire CLI entry point with arg parsing, tsup multi-entry build, and package.json bin registration
 
 ### Phase 04: Generic Typed Retrieval
 **Goal**: Consumers can opt into typed config reads and validator-backed retrieval without breaking existing untyped access patterns.

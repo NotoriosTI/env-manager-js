@@ -25,3 +25,4 @@ ssl/*.crt
 .planning/
 .claude
 CLAUDE.md
+*.tgz
