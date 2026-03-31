@@ -22,6 +22,7 @@ import { fileURLToPath } from 'url';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { ConfigManager as PublicConfigManager, ConfigValidationError } from '../src/index.js';
 import { GCPSecretLoader } from '../src/loaders/gcp.js';
 import { ConfigManager } from '../src/manager.js';
 import { writeRepoConfig } from './helpers.js';
@@ -51,6 +52,42 @@ afterEach(() => {
 // ─── .env.test ────────────────────────────────────────────────────────────────
 
 describe('integration: .env.test file', () => {
+  it('ConfigValidationError is exported from the public barrel for instanceof checks', async () => {
+    const root = createRepoRoot();
+    seedFixtures(root, '.env.test');
+
+    const configPath = writeRepoConfig(
+      root,
+      `
+      environments:
+        test:
+          origin: local
+          dotenv_path: .env.test
+          default: true
+      variables:
+        MISSING_VAR:
+          source: MISSING_VAR
+          type: str
+          required: true
+      `,
+    );
+
+    const manager = new PublicConfigManager(configPath);
+    const error = await manager.load().catch((rejection: unknown) => rejection);
+
+    expect(error).toBeInstanceOf(ConfigValidationError);
+    expect(error).toMatchObject({
+      name: 'ConfigValidationError',
+      issues: [
+        expect.objectContaining({
+          variableName: 'MISSING_VAR',
+          issueType: 'missing',
+          sourceKey: 'MISSING_VAR',
+        }),
+      ],
+    });
+  });
+
   it('loads all DB variables with correct types', async () => {
     const root = createRepoRoot();
     seedFixtures(root, '.env.test');

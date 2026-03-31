@@ -40,6 +40,127 @@ afterEach(() => {
 });
 
 describe('resolution validation', () => {
+  it('ConfigValidationError aggregates required missing issues with environment context during load()', async () => {
+    const repoRoot = createRepoRoot();
+    const dotenvPath = join(repoRoot, '.env');
+    const configPath = writeRepoConfig(
+      repoRoot,
+      `
+      environments:
+        default:
+          origin: local
+          dotenv_path: .env
+          default: true
+      variables:
+        API_KEY:
+          source: API_KEY
+          type: str
+          required: true
+        DB_PASSWORD:
+          source: DB_PASSWORD
+          type: str
+          required: true
+      `,
+    );
+    writeText(dotenvPath, '');
+    vi.stubEnv('APP_ENV', 'default');
+
+    const manager = new ConfigManager(configPath);
+    const error = await manager.load().catch((rejection: unknown) => rejection);
+
+    expect(error).toMatchObject({
+      name: 'ConfigValidationError',
+      issues: [
+        {
+          variableName: 'API_KEY',
+          issueType: 'missing',
+          sourceKey: 'API_KEY',
+          message: `Required variable 'API_KEY' not found in source 'API_KEY' for environment 'default' using local .env '${dotenvPath}'.`,
+          context: {
+            environmentName: 'default',
+            secretOrigin: 'local',
+            gcpProjectId: null,
+            dotenvPath,
+          },
+        },
+        {
+          variableName: 'DB_PASSWORD',
+          issueType: 'missing',
+          sourceKey: 'DB_PASSWORD',
+          message: `Required variable 'DB_PASSWORD' not found in source 'DB_PASSWORD' for environment 'default' using local .env '${dotenvPath}'.`,
+          context: {
+            environmentName: 'default',
+            secretOrigin: 'local',
+            gcpProjectId: null,
+            dotenvPath,
+          },
+        },
+      ],
+    });
+  });
+
+  it('ConfigValidationError aggregates invalid and required failures during environment load()', async () => {
+    const repoRoot = createRepoRoot();
+    const dotenvPath = join(repoRoot, '.env');
+    const configPath = writeRepoConfig(
+      repoRoot,
+      `
+      environments:
+        default:
+          origin: local
+          dotenv_path: .env
+          default: true
+      variables:
+        API_KEY:
+          source: API_KEY
+          type: str
+          required: true
+        PORT:
+          source: PORT
+          type: int
+          required: true
+        OPTIONAL_TOKEN:
+          source: OPTIONAL_TOKEN
+          type: str
+          required: false
+        FALLBACK_TOKEN:
+          source: FALLBACK_TOKEN
+          type: str
+          required: true
+          default: fallback-token
+      `,
+    );
+    writeText(dotenvPath, 'PORT=invalid-port\n');
+    vi.stubEnv('APP_ENV', 'default');
+
+    const manager = new ConfigManager(configPath);
+    const error = await manager.load().catch((rejection: unknown) => rejection);
+
+    expect(error).toMatchObject({
+      name: 'ConfigValidationError',
+      issues: [
+        {
+          variableName: 'API_KEY',
+          issueType: 'missing',
+          sourceKey: 'API_KEY',
+          message: `Required variable 'API_KEY' not found in source 'API_KEY' for environment 'default' using local .env '${dotenvPath}'.`,
+        },
+        {
+          variableName: 'PORT',
+          issueType: 'invalid',
+          sourceKey: 'PORT',
+          message: "Cannot convert 'PORT' value 'invalid-port' to int",
+        },
+      ],
+    });
+    expect((error as { issues?: Array<{ variableName: string }> }).issues).not.toContainEqual(
+      expect.objectContaining({ variableName: 'OPTIONAL_TOKEN' }),
+    );
+    expect((error as { issues?: Array<{ variableName: string }> }).issues).not.toContainEqual(
+      expect.objectContaining({ variableName: 'FALLBACK_TOKEN' }),
+    );
+  });
+
   it('required missing throws with env context and path', async () => {
     const repoRoot = createRepoRoot();
     const dotenvPath = join(repoRoot, '.env');
