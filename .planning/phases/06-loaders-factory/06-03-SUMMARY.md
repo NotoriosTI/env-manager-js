@@ -9,6 +9,9 @@ files_modified:
 requirements_satisfied:
   - LOAD-08
   - LOAD-09
+requirements-completed:
+  - LOAD-08
+  - LOAD-09
 ---
 
 # Summary: Plan 6.3 — Implement `src/factory.ts` and reconverge Phase 6
