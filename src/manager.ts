@@ -130,6 +130,8 @@ export class ConfigManager {
   private _values: Record<string, unknown> = {};
   private _loaded = false;
   private _loadingPromise: Promise<void> | null = null;
+  private _loadAttemptValues: Record<string, unknown> | null = null;
+  private _loadAttemptEnvWrites: Map<string, string> | null = null;
 
   constructor(configPath: string, options?: ConfigManagerOptions) {
     // 1. Resolve configPath to absolute
@@ -410,8 +412,43 @@ export class ConfigManager {
   }
 
   private _writeProcessEnv(key: string, value: string): void {
+    if (this._loadAttemptEnvWrites !== null) {
+      this._loadAttemptEnvWrites.set(key, value);
+      return;
+    }
     process.env[key] = value;
     _processEnvWrites.add(key);
+  }
+
+  private _storeLoadedValue(name: string, value: unknown): void {
+    if (this._loadAttemptValues !== null) {
+      this._loadAttemptValues[name] = value;
+      return;
+    }
+
+    this._values[name] = value;
+  }
+
+  private _beginLoadAttempt(): void {
+    this._loadAttemptValues = {};
+    this._loadAttemptEnvWrites = new Map();
+  }
+
+  private _commitLoadAttempt(): void {
+    if (this._loadAttemptValues === null || this._loadAttemptEnvWrites === null) {
+      return;
+    }
+
+    this._values = this._loadAttemptValues;
+    for (const [key, value] of this._loadAttemptEnvWrites.entries()) {
+      process.env[key] = value;
+      _processEnvWrites.add(key);
+    }
+  }
+
+  private _clearLoadAttempt(): void {
+    this._loadAttemptValues = null;
+    this._loadAttemptEnvWrites = null;
   }
 
   private _createMissingIssue(
@@ -454,6 +491,60 @@ export class ConfigManager {
     return createConfigValidationIssue(name, sourceKey, 'invalid', message, ctx);
   }
 
+  private _createOldFormatMissingIssue(
+    name: string,
+    def: VariableDefinition,
+    sourceKey: string,
+  ): ConfigValidationIssue | null {
+    const ctx = this._defaultSourceContext();
+
+    if (this._strict) {
+      return createConfigValidationIssue(
+        name,
+        sourceKey,
+        'missing',
+        `Strict mode: variable '${name}' is missing`,
+        ctx,
+      );
+    }
+
+    if (def.required === true) {
+      return createConfigValidationIssue(
+        name,
+        sourceKey,
+        'missing',
+        `Required variable '${name}' not found in source`,
+        ctx,
+      );
+    }
+
+    return null;
+  }
+
+  private _isDeferredPerVariableDotenvMissing(
+    def: VariableDefinition,
+    ctx: SourceContext,
+  ): boolean {
+    return (
+      def.dotenvPath != null &&
+      def.dotenvPath !== '' &&
+      ctx.secretOrigin === 'local' &&
+      ctx.dotenvPath != null &&
+      !existsSync(ctx.dotenvPath)
+    );
+  }
+
+  private _getDeferredPerVariableDotenvError(
+    def: VariableDefinition,
+    ctx: SourceContext,
+  ): Error | null {
+    if (!this._isDeferredPerVariableDotenvMissing(def, ctx)) {
+      return null;
+    }
+
+    return new Error(`DotEnvLoader: dotenv file not found: ${ctx.dotenvPath}`);
+  }
+
   private _finalizeLoadedValue(
     name: string,
     sourceKey: string,
@@ -465,7 +556,7 @@ export class ConfigManager {
       coerced = coerceType(rawValue, def.type, name);
     }
 
-    this._values[name] = coerced;
+    this._storeLoadedValue(name, coerced);
 
     if (coerced !== null && coerced !== undefined) {
       const value = String(coerced);
@@ -479,12 +570,22 @@ export class ConfigManager {
   async load(): Promise<void> {
     if (this._loaded) return;
     if (this._loadingPromise !== null) return this._loadingPromise;
-    this._loadingPromise = (
-      this._hasEnvironments ? this._loadNewFormat() : this._loadOldFormat()
-    ).then(() => {
-      this._loaded = true;
-      this._loadingPromise = null;
-    });
+    this._loadingPromise = (async () => {
+      _resetLoaderCache();
+      this._beginLoadAttempt();
+      try {
+        if (this._hasEnvironments) {
+          await this._loadNewFormat();
+        } else {
+          await this._loadOldFormat();
+        }
+        this._commitLoadAttempt();
+        this._loaded = true;
+      } finally {
+        this._clearLoadAttempt();
+        this._loadingPromise = null;
+      }
+    })();
     return this._loadingPromise;
   }
 
@@ -502,13 +603,12 @@ export class ConfigManager {
     }
 
     const sourcedVars: SourcingInfo[] = [];
-    const issues: ConfigValidationIssue[] = [];
 
     for (const [name, def] of Object.entries(this._variables)) {
       if (def.source == null) {
         // Default-only: store default value (or leave unset for lazy)
         if (def.default !== undefined) {
-          this._values[name] = def.default;
+          this._storeLoadedValue(name, def.default);
         }
         continue;
       }
@@ -527,7 +627,7 @@ export class ConfigManager {
       groups.get(key)!.push(info);
     }
 
-    const groupLoads: Promise<void>[] = [];
+    const groupLoads: Promise<ConfigValidationIssue[]>[] = [];
 
     // Fetch each group
     for (const [, groupInfos] of groups) {
@@ -546,7 +646,9 @@ export class ConfigManager {
       }
 
       // Fetch remaining vars from file/GCP
-      const storeGroupResults = (fileResults: Record<string, string | null>): void => {
+      const storeGroupResults = (fileResults: Record<string, string | null>): ConfigValidationIssue[] => {
+        const groupIssues: ConfigValidationIssue[] = [];
+
         for (const info of groupInfos) {
           const { name, def, sourceKey, ctx } = info;
 
@@ -565,9 +667,14 @@ export class ConfigManager {
           }
 
           if (rawValue === null) {
+            if (this._isDeferredPerVariableDotenvMissing(def, ctx)) {
+              this._storeLoadedValue(name, null);
+              continue;
+            }
+
             const issue = this._createMissingIssue(name, def, ctx, sourceKey);
             if (issue !== null) {
-              issues.push(issue);
+              groupIssues.push(issue);
               continue;
             }
           }
@@ -575,9 +682,11 @@ export class ConfigManager {
           try {
             this._finalizeLoadedValue(name, sourceKey, def, rawValue);
           } catch (error) {
-            issues.push(this._createInvalidIssue(name, sourceKey, ctx, error));
+            groupIssues.push(this._createInvalidIssue(name, sourceKey, ctx, error));
           }
         }
+
+        return groupIssues;
       };
 
       const resolveFileResults = async (): Promise<Record<string, string | null>> => {
@@ -622,12 +731,10 @@ export class ConfigManager {
         return loader.getMany(needFile.map((i) => i.sourceKey));
       };
 
-      groupLoads.push(
-        resolveFileResults().then((resolved) => storeGroupResults(resolved))
-      );
+      groupLoads.push(resolveFileResults().then((resolved) => storeGroupResults(resolved)));
     }
 
-    await Promise.all(groupLoads);
+    const issues = (await Promise.all(groupLoads)).flat();
 
     if (issues.length > 0) {
       throw new ConfigValidationError(issues);
@@ -642,6 +749,7 @@ export class ConfigManager {
       name: string;
       def: VariableDefinition;
       sourceKey: string;
+      ctx: SourceContext;
     }
 
     const ctx = this._defaultSourceContext();
@@ -654,11 +762,11 @@ export class ConfigManager {
       if (def.source == null) {
         // Default-only: store default value
         if (def.default !== undefined) {
-          this._values[name] = def.default;
+          this._storeLoadedValue(name, def.default);
         }
         continue;
       }
-      sourcedVars.push({ name, def, sourceKey: def.source });
+      sourcedVars.push({ name, def, sourceKey: def.source, ctx });
     }
 
     if (sourcedVars.length === 0) return;
@@ -676,9 +784,11 @@ export class ConfigManager {
     }
 
     // Batch-fetch remaining via createLoader (DotEnvLoader or GCPSecretLoader)
+    const issues: ConfigValidationIssue[] = [];
+
     const storeLoaderResults = (loaderResults: Record<string, string | null>): void => {
       for (const info of sourcedVars) {
-        const { name, def, sourceKey } = info;
+        const { name, def, sourceKey, ctx: infoCtx } = info;
 
         let rawValue: unknown = null;
         if (fromProcessEnv.has(name)) {
@@ -695,17 +805,21 @@ export class ConfigManager {
         }
 
         if (rawValue === null) {
-          if (this._strict) {
-            throw new Error(`Strict mode: variable '${name}' is missing`);
+          const issue = this._createOldFormatMissingIssue(name, def, sourceKey);
+          if (issue !== null) {
+            issues.push(issue);
+            continue;
           }
-          if (def.required === true) {
-            throw new Error(`Required variable '${name}' not found in source`);
-          }
-          this._values[name] = null;
+
+          this._storeLoadedValue(name, null);
           continue;
         }
 
-        this._finalizeLoadedValue(name, sourceKey, def, rawValue);
+        try {
+          this._finalizeLoadedValue(name, sourceKey, def, rawValue);
+        } catch (error) {
+          issues.push(this._createInvalidIssue(name, sourceKey, infoCtx, error));
+        }
       }
     };
 
@@ -717,6 +831,10 @@ export class ConfigManager {
     }
 
     storeLoaderResults(loaderResults);
+
+    if (issues.length > 0) {
+      throw new ConfigValidationError(issues);
+    }
   }
 
   get(name: string): unknown | null {
@@ -755,6 +873,11 @@ export class ConfigManager {
           if (process.env[sourceKey] !== undefined) {
             const envVal = process.env[sourceKey]!;
             return this._finalizeLoadedValue(name, sourceKey, def, envVal) as unknown;
+          }
+
+          const deferredDotenvError = this._getDeferredPerVariableDotenvError(def, ctx);
+          if (deferredDotenvError !== null) {
+            throw deferredDotenvError;
           }
 
           return this._handleMissingLoadedValue(name, def, ctx, sourceKey, ctxLabel);
@@ -850,6 +973,10 @@ export class ConfigManager {
 
     if (rawValue === null) {
       const ctxLabel = buildContextLabel(ctx);
+      const deferredDotenvError = this._getDeferredPerVariableDotenvError(def, ctx);
+      if (deferredDotenvError !== null) {
+        throw deferredDotenvError;
+      }
       if (this._strict) {
         throw new Error(
           `Strict mode: variable '${name}' is missing from source '${sourceKey}' in ${ctxLabel}.`,
