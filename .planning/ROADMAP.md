@@ -23,11 +23,11 @@ Behavior-preserving TypeScript port of the Python `env-manager` library, publish
 
 ### Phase 1: Refactor ConfigManager async API: Option A (async init, sync get) + Option B (parallel GCP fetches). Move all async work into initConfig/load() so getConfig() is always synchronous. Parallelize GCPSecretLoader.getMany with Promise.all instead of sequential await.
 
-**Goal:** [To be planned]
+**Goal:** Remove `autoLoad` footgun, make `load()` always return `Promise<void>`, and clean up `MaybePromise<T>`/`isPromiseLike` dead code. Ship as v0.1.2.
 **Requirements**: TBD
 **Depends on:** Phase 0
-**Plans:** 0 plans
+**Plans:** 1/2 plans executed
 
 Plans:
-- [ ] TBD (run /gsd:plan-phase 1 to break down)
-
+- [x] 01-01-PLAN.md — Remove MaybePromise/autoLoad from types.ts; make DotEnvLoader async
+- [ ] 01-02-PLAN.md — Refactor manager.ts load() to always-async; migrate tests; bump to v0.1.2
