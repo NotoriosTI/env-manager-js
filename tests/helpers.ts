@@ -21,6 +21,11 @@ export function writeEnv(tmpDir: string, content = 'DB_PASSWORD=secret123\n'): s
   return envPath;
 }
 
+export function writeText(path: string, content: string): string {
+  writeFileSync(path, content, 'utf8');
+  return path;
+}
+
 /**
  * Write a minimal package.json to repoRoot (NOT pyproject.toml -- this is the TS adaptation),
  * create repoRoot/config/, write dedented YAML to config.yaml, and return the config path.

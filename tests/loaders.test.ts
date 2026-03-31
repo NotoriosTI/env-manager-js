@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DotEnvLoader } from '../src/loaders/dotenv.js';
 import { GCPSecretLoader, type GCPSecretClient } from '../src/loaders/gcp.js';
-import { writeEnv } from './helpers.js';
+import { writeEnv, writeText } from './helpers.js';
 
 const mockClient = {
   accessSecretVersion: vi.fn(),
@@ -18,20 +18,46 @@ function createGcpLoader(
   return new GCPSecretLoader(gcpProjectId, { createClient });
 }
 
-describe('DotEnvLoader', () => {
-  const originalDbPassword = process.env.DB_PASSWORD;
+function createDotEnvLoader(dotenvPath: string, options?: Record<string, unknown>): DotEnvLoader {
+  return Reflect.construct(
+    DotEnvLoader as unknown as new (...args: unknown[]) => DotEnvLoader,
+    [dotenvPath, options],
+  );
+}
 
+const DOTENVX_PUBLIC_KEY =
+  '037cfbfc90234cfdab7eb54050566293789efaa1a35dc420749662db400dc9c4b2';
+const DOTENVX_PRIVATE_KEY =
+  '81dac4d2c42e67a2c6542d3b943a4674a05c4be5e7e5a40a689be7a3bd49a07e';
+const DOTENVX_ENCRYPTED_HELLO =
+  'encrypted:BAZb6wDPFaFeFzq8Ut48oiNFSPtYvJmv4AwVDFVcNKiIcGxrxuRIFGWxZ3xVjxOgOo6w65bWFTpAfbatSz52+VvwDYZ3nFUO828nzovH5ZhsIoxPuPb7K0ZphmNynR7Hxci4a+fB';
+
+function writeEncryptedEnv(
+  tmpDir: string,
+  extraLines: string[] = [],
+): string {
+  return writeEnv(
+    tmpDir,
+    [
+      '#/-------------------[DOTENV_PUBLIC_KEY]--------------------/',
+      '#/            public-key encryption for .env files          /',
+      '#/----------------------------------------------------------/',
+      `DOTENV_PUBLIC_KEY="${DOTENVX_PUBLIC_KEY}"`,
+      `HELLO="${DOTENVX_ENCRYPTED_HELLO}"`,
+      'PLAIN=still-plain',
+      ...extraLines,
+      '',
+    ].join('\n'),
+  );
+}
+
+describe('DotEnvLoader', () => {
   beforeEach(() => {
     delete process.env.DB_PASSWORD;
   });
 
   afterEach(() => {
-    if (originalDbPassword === undefined) {
-      delete process.env.DB_PASSWORD;
-      return;
-    }
-
-    process.env.DB_PASSWORD = originalDbPassword;
+    vi.unstubAllEnvs();
   });
 
   it('reads KEY=VALUE from .env file', async () => {
@@ -71,6 +97,118 @@ describe('DotEnvLoader', () => {
     expect(await loader.getMany(['DB_PASSWORD', 'NONEXISTENT'])).toEqual({
       DB_PASSWORD: 'secret123',
       NONEXISTENT: null,
+    });
+  });
+
+  it('encrypted dotenv mode stays quiet for plaintext-only files', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEnv(tmpDir, 'HELLO=plaintext\n');
+
+    const loader = createDotEnvLoader(envPath, { encrypted: true });
+
+    await expect(loader.get('HELLO')).resolves.toBe('plaintext');
+  });
+
+  it('decrypts encrypted entries while leaving plaintext values untouched in mixed dotenv files', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEncryptedEnv(tmpDir);
+    vi.stubEnv('DOTENV_PRIVATE_KEY', DOTENVX_PRIVATE_KEY);
+
+    const loader = createDotEnvLoader(envPath, {
+      encrypted: true,
+      environmentName: 'development',
+    });
+
+    await expect(loader.get('HELLO')).resolves.toBe('Hello');
+    await expect(loader.get('PLAIN')).resolves.toBe('still-plain');
+  });
+
+  it('process.env still overrides encrypted dotenv values for the same key', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEncryptedEnv(tmpDir);
+    vi.stubEnv('HELLO', 'from-process-env');
+    vi.stubEnv('DOTENV_PRIVATE_KEY', DOTENVX_PRIVATE_KEY);
+
+    const loader = createDotEnvLoader(envPath, { encrypted: true });
+
+    await expect(loader.get('HELLO')).resolves.toBe('from-process-env');
+    await expect(loader.get('PLAIN')).resolves.toBe('still-plain');
+  });
+
+  it('normalizes environment names before deriving the env-specific private key name', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEncryptedEnv(tmpDir);
+    vi.stubEnv('DOTENV_PRIVATE_KEY_PROD_US_EAST_1', DOTENVX_PRIVATE_KEY);
+
+    const loader = createDotEnvLoader(envPath, {
+      encrypted: true,
+      environmentName: 'prod.us-east-1',
+    });
+
+    await expect(loader.get('HELLO')).resolves.toBe('Hello');
+  });
+
+  it('old-format encrypted dotenv lookup falls back to generic DOTENV_PRIVATE_KEY only', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEncryptedEnv(tmpDir);
+    vi.stubEnv('DOTENV_PRIVATE_KEY', DOTENVX_PRIVATE_KEY);
+
+    const loader = createDotEnvLoader(envPath, { encrypted: true });
+
+    await expect(loader.get('HELLO')).resolves.toBe('Hello');
+  });
+
+  it('prefers the normalized env-specific private key before the generic fallback', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEncryptedEnv(tmpDir);
+    vi.stubEnv('DOTENV_PRIVATE_KEY_STAGING_BLUE', DOTENVX_PRIVATE_KEY);
+    vi.stubEnv('DOTENV_PRIVATE_KEY', 'deadbeef');
+
+    const loader = createDotEnvLoader(envPath, {
+      encrypted: true,
+      environmentName: 'staging.blue',
+    });
+
+    await expect(loader.get('HELLO')).resolves.toBe('Hello');
+  });
+
+  it('uses the generic private key before the colocated .env.keys fallback', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEncryptedEnv(tmpDir);
+    writeText(join(tmpDir, '.env.keys'), 'DOTENV_PRIVATE_KEY=deadbeef\n');
+    vi.stubEnv('DOTENV_PRIVATE_KEY', DOTENVX_PRIVATE_KEY);
+
+    const loader = createDotEnvLoader(envPath, { encrypted: true });
+
+    await expect(loader.get('HELLO')).resolves.toBe('Hello');
+  });
+
+  it('falls back to a colocated .env.keys file with a generic private key entry', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEncryptedEnv(tmpDir);
+    writeText(join(tmpDir, '.env.keys'), `DOTENV_PRIVATE_KEY=${DOTENVX_PRIVATE_KEY}\n`);
+
+    const loader = createDotEnvLoader(envPath, { encrypted: true });
+
+    await expect(loader.get('HELLO')).resolves.toBe('Hello');
+  });
+
+  it('raises one structured DecryptionError when an encrypted value cannot be decrypted', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEncryptedEnv(tmpDir);
+
+    const loader = createDotEnvLoader(envPath, {
+      encrypted: true,
+      environmentName: 'qa',
+    });
+
+    await expect(loader.get('HELLO')).rejects.toMatchObject({
+      name: 'DecryptionError',
+      issues: [
+        expect.objectContaining({
+          key: 'HELLO',
+        }),
+      ],
     });
   });
 });
