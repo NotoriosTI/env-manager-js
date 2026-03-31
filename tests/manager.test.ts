@@ -4,7 +4,7 @@ import { isAbsolute, join } from 'path';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ConfigManager, getConfig, initConfig, requireConfig } from '../src/manager.js';
+import { ConfigManager, _resetSingleton, getConfig, initConfig, requireConfig } from '../src/manager.js';
 import { writeConfig, writeEnv } from './helpers.js';
 
 const tmpDirs: string[] = [];
@@ -205,6 +205,32 @@ variables:
     expect(requireConfig('DB_PASSWORD')).toBe('first-secret');
     expect(process.env.SECOND_ONLY).toBeUndefined();
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Configuration manager already initialised'));
+  });
+
+  it('reset/recreate clears cached loader state before rebuilding the singleton', () => {
+    const tmpDir = createTempDir();
+    const configPath = writeConfig(
+      tmpDir,
+      `
+variables:
+  DB_PASSWORD:
+    source: DB_PASSWORD
+    type: str
+    required: true
+`,
+    );
+    const dotenvPath = writeEnv(tmpDir, 'DB_PASSWORD=first-secret\n');
+
+    initConfig(configPath, { dotenvPath });
+    expect(getConfig('DB_PASSWORD')).toBe('first-secret');
+
+    writeEnv(tmpDir, 'DB_PASSWORD=second-secret\n');
+    _resetSingleton();
+
+    initConfig(configPath, { dotenvPath });
+
+    expect(getConfig('DB_PASSWORD')).toBe('second-secret');
+    expect(process.env.DB_PASSWORD).toBe('second-secret');
   });
 
   it('debug mode disables masking in logs', () => {
