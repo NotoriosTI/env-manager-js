@@ -2,11 +2,9 @@ export type SecretOrigin = 'local' | 'gcp';
 
 export type VariableType = 'str' | 'int' | 'float' | 'bool';
 
-export type MaybePromise<T> = T | Promise<T>;
-
 export interface SecretLoader {
-  get(key: string): MaybePromise<string | null>;
-  getMany(keys: readonly string[]): MaybePromise<Record<string, string | null>>;
+  get(key: string): Promise<string | null>;
+  getMany(keys: readonly string[]): Promise<Record<string, string | null>>;
 }
 
 export interface EnvironmentConfig {
@@ -48,5 +46,4 @@ export interface ConfigManagerOptions {
   dotenvPath?: string | null;
   strict?: boolean;
   debug?: boolean;
-  autoLoad?: boolean;
 }
