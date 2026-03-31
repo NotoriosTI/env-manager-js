@@ -6,6 +6,19 @@ completed: "2026-03-30"
 tests_before: 2 failing (GCP auth only, pre-existing)
 tests_after: 2 failing (GCP auth only, pre-existing)
 tests_passing: 98
+requirements-completed:
+  - MGR-01
+  - MGR-06
+  - MGR-07
+  - MGR-08
+  - MGR-09
+  - MGR-10
+  - MGR-11
+  - MGR-12
+  - MGR-13
+  - MGR-14
+  - MGR-15
+  - MGR-16
 ---
 
 # Summary: Plan 7.1 — Implement ConfigManager Constructor
@@ -46,7 +59,7 @@ Implemented in `src/manager.ts`:
 9. `_loadNewFormat()`: for new-format (has environments), local-origin vars read dotenv files directly via `dotenv.parse(readFileSync())`; GCP-origin vars use `createLoader()`; per-variable dotenvPath missing-file errors deferred to `get()`; environment-level missing dotenv throws during `load()`
 10. `_loadOldFormat()`: for old-format (no environments section), ALL sourced vars use `createLoader()` (may be mocked in tests); required/strict validation fires in `load()`
 11. `get()`: handles cached values, required/strict/optional checks with context labels, per-variable deferred-dotenv lazy re-fetch, process.env write-back via `_writeProcessEnv()` with `_processEnvWrites` tracking
-12. `initConfig()`, `getConfig()`, `requireConfig()`, `_resetSingleton()` singleton API
+12. `initConfig()`, `getConfig()`, `requireConfig()`, `_resetSingleton()` singleton API; later reconciled in Plan 10.2 so async-backed manager lookups stay Promise-aware and singleton teardown also clears the shared loader cache
 
 ## Key Architectural Decisions
 

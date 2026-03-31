@@ -10,9 +10,9 @@ requires:
 
 provides:
   - initConfig() singleton factory with re-initialization warning
-  - getConfig() singleton accessor (with or without key)
-  - requireConfig() singleton accessor with initialization and key validation
-  - _resetSingleton() already implemented for test isolation
+  - getConfig() singleton accessor (with or without key), preserving MaybePromise results for async-backed lookups
+  - requireConfig() singleton accessor with initialization and key validation across sync and async-backed lookups
+  - _resetSingleton() teardown that also clears the shared loader cache for test isolation
 
 affects: [08-integration]
 
@@ -31,11 +31,11 @@ key-files:
 key-decisions:
   - "Singleton API was fully implemented in Plan 7.1 (commit ee94cb8); Plan 7.4 is a validation plan"
   - "initConfig returns existing singleton on re-init (does not create a new one)"
-  - "requireConfig error messages match Python exactly: 'Configuration manager not initialised. Call initConfig().' and 'Required configuration X is missing'"
+  - "requireConfig preserves the same Python-parity error messages while also handling Promise-backed keyed lookups after Plan 10.2"
 
 patterns-established:
   - "Re-initialization guard: if (singleton !== null) { console.warn(...); return singleton; }"
-  - "getConfig with no name returns singleton instance for use as a ConfigManager accessor"
+  - "getConfig with no name returns the singleton instance; keyed access delegates through the manager's MaybePromise-aware get() path"
 
 requirements-completed: [MGR-02, MGR-03, MGR-04]
 
@@ -62,11 +62,11 @@ completed: 2026-03-30
 - Confirmed singleton API specific tests:
   - "singleton API: initConfig, getConfig, requireConfig" — PASSING
   - "re-init logs warning" — PASSING
-- Verified exact behavior of `src/manager.ts` lines 881-920:
+- Verified exact behavior of the singleton surface in `src/manager.ts`, including the Plan 10.2 reset/cache and MaybePromise contract updates:
   - `initConfig`: warns with "Configuration manager already initialised" on re-init, returns existing singleton
-  - `getConfig`: returns `singleton` when no arg; returns `singleton.get(name)` with arg; returns `null` when no singleton
-  - `requireConfig`: throws "Configuration manager not initialised. Call initConfig()." when no singleton; throws "Required configuration '${name}' is missing" when key missing; returns singleton when no arg
-  - `_resetSingleton`: sets `singleton = null` and cleans process.env writes
+  - `getConfig`: returns `singleton` when no arg; returns `singleton.get(name)` with arg; returns `null` when no singleton; keyed access may now yield a Promise for async-backed loader paths
+  - `requireConfig`: throws "Configuration manager not initialised. Call initConfig()." when no singleton; throws "Required configuration '${name}' is missing" when key missing; returns singleton when no arg; awaits Promise-backed keyed lookups before enforcing the required-value contract
+  - `_resetSingleton`: sets `singleton = null`, clears the shared loader cache, and cleans process.env writes
 
 ## Task Commits
 
@@ -86,6 +86,7 @@ No new commits required — implementation was pre-existing from Plan 7.1. Plan 
 - **Singleton API is a validation plan**: All three singleton functions (`initConfig`, `getConfig`, `requireConfig`) were implemented ahead-of-schedule in Plan 7.1 alongside the ConfigManager constructor. Plan 7.4 confirms the design matches the spec.
 - **re-init warning is `console.warn`, not a throw**: `initConfig` calls `console.warn('Configuration manager already initialised. Call _resetSingleton() to reset.')` and returns the existing singleton without creating a new one.
 - **getConfig is lenient** (no throw on missing singleton): Unlike `requireConfig`, `getConfig` returns `null` if no singleton exists. This matches the Python behavior where getConfig is optional-access and requireConfig is strict-access.
+- **Singleton accessors now honor async loader boundaries**: After Plan 10.2, keyed `getConfig()` and `requireConfig()` calls preserve Promise-backed manager values instead of forcing them through a synchronous contract.
 
 ## Deviations from Plan
 

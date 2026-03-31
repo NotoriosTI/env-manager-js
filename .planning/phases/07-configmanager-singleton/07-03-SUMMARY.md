@@ -15,7 +15,7 @@ provides:
   - get() with full validation: strict/required/optional/old-format message paths
   - coerceType() applied to all resolved values
   - process.env write-back with null guard (no "null" string pollution)
-  - debug/masked logging via maskSecret() convention
+  - debug-mode raw logging for loaded values; no masked logging path is asserted here
 
 affects: [07-04, 08-integration]
 
@@ -35,7 +35,7 @@ key-files:
 key-decisions:
   - "load() pipeline was implemented ahead-of-schedule in Plan 7.1; Plan 7.3 confirms all 61 Phase 7 tests pass"
   - "Local origin reads dotenv files directly (not via createLoader) to avoid sync/async mismatch with DotEnvLoader"
-  - "GCP origin always goes through createLoader; test mocks return sync fake loaders"
+  - "GCP origin always goes through createLoader; after Plan 10.2 the manager preserves async loader results as MaybePromise values until they resolve"
   - "Default-only variables (no source, has default) completely ignore process.env even when same-named env var exists"
   - "Strict mode check order: strict → required+default → required-no-default → optional → neither"
 
@@ -85,7 +85,7 @@ No new commits required — implementation was pre-existing from Plan 7.1. Plan 
 
 ## Decisions Made
 
-- **load() uses sync path**: Since tests mock `createLoader` to return sync fake loaders, and the constructor calls `load()` synchronously, the load pipeline stays sync. Real GCP async path is handled in tests via mocks.
+- **Local load path stays sync where possible**: Local dotenv reads still happen synchronously, but async-backed loader paths now remain Promise-aware until they resolve instead of being documented as fully synchronous.
 - **Local origin bypasses createLoader**: `_loadNewFormat()` reads dotenv files directly using `dotenv.parse(readFileSync())` for local origin, only calling `createLoader` for GCP origin. This avoids the sync/async mismatch that would occur if DotEnvLoader were used.
 - **Default-only semantics confirmed**: Variables with `default` but no `source` resolve from YAML exclusively — `process.env[varName]` is never consulted, even when set. This is the Python behavior per `manager.py`.
 

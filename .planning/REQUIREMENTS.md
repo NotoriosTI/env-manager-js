@@ -157,25 +157,25 @@ Requirements for initial release. Each maps to roadmap phases.
 | ENV-10 | Phase 5 | Complete |
 | ENV-11 | Phase 5 | Complete |
 | ENV-12 | Phase 5 | Complete |
-| LOAD-01 | Phase 6 | Not started |
-| LOAD-02 | Phase 6 | Not started |
-| LOAD-03 | Phase 6 | Not started |
-| LOAD-04 | Phase 6 | Not started |
-| LOAD-05 | Phase 6 | Not started |
-| LOAD-06 | Phase 6 | Not started |
-| LOAD-07 | Phase 6 | Not started |
-| LOAD-08 | Phase 6 | Not started |
-| LOAD-09 | Phase 6 | Not started |
+| LOAD-01 | Phase 6 | Complete |
+| LOAD-02 | Phase 6 | Complete |
+| LOAD-03 | Phase 6 | Complete |
+| LOAD-04 | Phase 6 | Complete |
+| LOAD-05 | Phase 6 | Complete |
+| LOAD-06 | Phase 6 | Complete |
+| LOAD-07 | Phase 6 | Complete |
+| LOAD-08 | Phase 6 | Complete |
+| LOAD-09 | Phase 6 | Complete |
 | RES-01 | Phase 7 | Not started |
 | RES-02 | Phase 7 | Not started |
 | RES-03 | Phase 7 | Not started |
 | RES-04 | Phase 7 | Complete |
-| RES-05 | Phase 7 | Not started |
-| RES-06 | Phase 7 | Not started |
-| RES-07 | Phase 7 | Not started |
-| RES-08 | Phase 7 | Not started |
-| RES-09 | Phase 7 | Not started |
-| RES-10 | Phase 7 | Not started |
+| RES-05 | Phase 7 | Complete |
+| RES-06 | Phase 7 | Complete |
+| RES-07 | Phase 7 | Complete |
+| RES-08 | Phase 7 | Complete |
+| RES-09 | Phase 7 | Complete |
+| RES-10 | Phase 7 | Complete |
 | RES-11 | Phase 7 | Not started |
 | RES-12 | Phase 7 | Not started |
 | RES-13 | Phase 7 | Not started |
@@ -200,15 +200,15 @@ Requirements for initial release. Each maps to roadmap phases.
 | MGR-03 | Phase 7 | Complete |
 | MGR-04 | Phase 7 | Not started |
 | MGR-05 | Phase 7 | Not started |
-| MGR-06 | Phase 7 | Not started |
-| MGR-07 | Phase 7 | Not started |
-| MGR-08 | Phase 7 | Not started |
-| MGR-09 | Phase 7 | Not started |
-| MGR-10 | Phase 7 | Not started |
-| MGR-11 | Phase 7 | Not started |
-| MGR-12 | Phase 7 | Not started |
-| MGR-13 | Phase 7 | Not started |
-| MGR-14 | Phase 7 | Not started |
+| MGR-06 | Phase 7 | Complete |
+| MGR-07 | Phase 7 | Complete |
+| MGR-08 | Phase 7 | Complete |
+| MGR-09 | Phase 7 | Complete |
+| MGR-10 | Phase 7 | Complete |
+| MGR-11 | Phase 7 | Complete |
+| MGR-12 | Phase 7 | Complete |
+| MGR-13 | Phase 7 | Complete |
+| MGR-14 | Phase 7 | Complete |
 | MGR-15 | Phase 7 | Complete |
 | MGR-16 | Phase 7 | Complete |
 | PKG-01 | Phase 1 | Not started |
