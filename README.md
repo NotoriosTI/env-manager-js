@@ -1,6 +1,6 @@
 # @notoriosti/env-manager
 
-A TypeScript configuration manager that unifies local `.env` files and GCP Secret Manager behind a single declarative YAML config. Features type coercion, multi-environment support, per-variable source overrides, and a singleton API for app-wide access.
+A TypeScript configuration manager that unifies local `.env` files and GCP Secret Manager behind a single declarative YAML config. Features type coercion, multi-environment support, per-variable source overrides, aggregate validation errors, encrypted dotenv (dotenvx-compatible) support, and a CLI encryption tool.
 
 ## Install
 
@@ -200,6 +200,7 @@ Named environments, selected at runtime via `APP_ENV`.
 | `gcp_project_id` | `string` | yes (if `origin: gcp`) | GCP project ID for this environment. |
 | `dotenv_path` | `string` | no | Path to the `.env` file. Relative paths resolve from the project root (directory containing `package.json`). Defaults to `.env`. |
 | `default` | `boolean` | no | Use this environment when `APP_ENV` is not set. Only one environment may be the default. |
+| `encrypted_dotenv.enabled` | `boolean` | no | Enable encrypted dotenv support for this environment. See [Encrypted Dotenv Support](#encrypted-dotenv-support). |
 
 **Active environment selection order:**
 
@@ -482,6 +483,169 @@ APP_ENV=production node dist/app.js
 
 ---
 
+## Encrypted Dotenv Support
+
+env-manager supports dotenvx-compatible encrypted `.env` files using ECIES (secp256k1). Values are encrypted at rest and decrypted transparently during `load()`.
+
+### Enabling Encrypted Dotenv
+
+Add `encrypted_dotenv` to an environment in `config.yaml`:
+
+```yaml
+environments:
+  development:
+    origin: local
+    dotenv_path: .env
+    default: true
+    encrypted_dotenv:
+      enabled: true
+```
+
+### Private Key Resolution
+
+When `encrypted_dotenv.enabled: true`, the manager resolves the private key in this order:
+
+1. `DOTENV_PRIVATE_KEY_<ENV>` — environment-specific key (e.g., `DOTENV_PRIVATE_KEY_DEVELOPMENT`)
+2. `DOTENV_PRIVATE_KEY` — generic key
+3. `.env.keys` file in the same directory as the dotenv file
+
+### Dedicated Private Key Source (`privateKey` config)
+
+For production use cases where the private key is stored in GCP Secret Manager or a separate `.env` file, configure a dedicated source:
+
+```yaml
+environments:
+  production:
+    origin: local
+    dotenv_path: .env.production
+    encrypted_dotenv:
+      enabled: true
+      privateKey:
+        source: MY_DOTENV_PRIVATE_KEY
+        secretOrigin: gcp
+        gcpProjectId: my-project-prod
+```
+
+`PrivateKeyConfig` fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `source` | `string` | Key name to look up in the loader. |
+| `secretOrigin` | `local \| gcp` | Whether to fetch from a local dotenv file or GCP Secret Manager. |
+| `dotenvPath` | `string \| null` | Path to the dotenv file (only for `local` origin). |
+| `gcpProjectId` | `string \| null` | GCP project ID (only for `gcp` origin). |
+
+### Errors
+
+- **`DecryptionError`** — thrown by `load()` when one or more `encrypted:` values cannot be decrypted. Has an `issues` array of `DecryptionIssue` objects (each with `key` and `message`).
+
+```ts
+import { initConfig, DecryptionError } from '@notoriosti/env-manager';
+
+try {
+  await initConfig('./config.yaml');
+} catch (err) {
+  if (err instanceof DecryptionError) {
+    console.error('Failed to decrypt:', err.issues);
+  }
+}
+```
+
+> **Current limitation:** non-local origins (`origin: gcp`) with `encrypted_dotenv.enabled: true` throw `NotImplementedError`. Encrypted dotenv is currently only supported for `origin: local`.
+
+---
+
+## CLI: Encrypt .env Files
+
+The `env-manager-encrypt` CLI encrypts a plaintext `.env` file in place, producing a dotenvx-compatible encrypted file and a colocated `.env.keys` file.
+
+### Usage
+
+```bash
+npx env-manager-encrypt <file> [--env <name>] [--force]
+```
+
+| Argument | Description |
+|----------|-------------|
+| `<file>` | Path to the `.env` file to encrypt |
+| `--env <name>` | Environment name. Writes `DOTENV_PRIVATE_KEY_<NAME>` in `.env.keys` instead of `DOTENV_PRIVATE_KEY`. |
+| `--force` | Overwrite an existing `.env.keys` file. |
+
+### What It Does
+
+1. Generates a fresh secp256k1 key pair.
+2. Rewrites each plaintext value as `encrypted:<base64>` (ECIES-encrypted).
+3. Adds a `DOTENV_PUBLIC_KEY` header to the `.env` file.
+4. Writes the private key to `.env.keys` in the same directory.
+
+Refuses to run if:
+- The file already has `DOTENV_PUBLIC_KEY` (already encrypted).
+- `.env.keys` already exists (use `--force` to overwrite).
+
+Values already prefixed with `encrypted:` are skipped.
+
+### Example Workflow
+
+```bash
+# 1. Encrypt .env for the development environment
+npx env-manager-encrypt .env --env development
+
+# .env is now encrypted, .env.keys contains DOTENV_PRIVATE_KEY_DEVELOPMENT
+
+# 2. Configure config.yaml
+```
+
+```yaml
+environments:
+  development:
+    origin: local
+    dotenv_path: .env
+    default: true
+    encrypted_dotenv:
+      enabled: true
+```
+
+```bash
+# 3. At runtime, set the private key so load() can decrypt
+export DOTENV_PRIVATE_KEY_DEVELOPMENT="$(grep DOTENV_PRIVATE_KEY_DEVELOPMENT .env.keys | cut -d= -f2- | tr -d '\"')"
+
+node dist/app.js
+```
+
+> Add `.env.keys` to `.gitignore`. Commit the encrypted `.env` file — its values are safe to version-control.
+
+---
+
+## Validation Errors
+
+`load()` aggregates all validation issues into a single `ConfigValidationError` rather than failing on the first problem. This lets you see all missing or invalid variables at once.
+
+```ts
+import { initConfig, ConfigValidationError } from '@notoriosti/env-manager';
+
+try {
+  await initConfig('./config.yaml');
+} catch (err) {
+  if (err instanceof ConfigValidationError) {
+    for (const issue of err.issues) {
+      console.error(`${issue.variableName}: ${issue.message}`);
+    }
+  }
+}
+```
+
+### `ConfigValidationIssue`
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `variableName` | `string` | The variable name as defined in YAML. |
+| `issueType` | `'missing' \| 'invalid'` | Whether the variable was absent or failed type coercion. |
+| `message` | `string` | Human-readable description of the issue. |
+| `sourceKey` | `string` | The source key looked up in the loader. |
+| `context` | `SourceContext` | Environment name, origin, GCP project, and dotenv path at load time. |
+
+---
+
 ## GCP Setup
 
 1. **Install the peer dependency** (included as a direct dependency — no extra install needed).
@@ -497,18 +661,34 @@ APP_ENV=production node dist/app.js
 
 ## Type Exports
 
-All interfaces and types are exported for TypeScript consumers:
+All interfaces, types, and classes are exported for TypeScript consumers:
 
 ```ts
 import type {
   ConfigManagerOptions,
+  ConfigValidationIssue,
+  ConfigValidationIssueType,
+  DecryptionIssue,
+  EncryptedDotenvConfig,
   EnvironmentConfig,
+  PrivateKeyConfig,
   SecretLoader,
   SecretOrigin,       // 'local' | 'gcp'
   SourceContext,
   ValidationConfig,
   VariableDefinition,
   VariableType,       // 'str' | 'int' | 'float' | 'bool'
+} from '@notoriosti/env-manager';
+
+import {
+  ConfigValidationError,  // class — catch validation errors
+  DecryptionError,        // class — catch decryption errors
+  NotImplementedError,    // class — catch not-yet-supported configurations
+  coerceType,             // utility — coerce a string to a VariableType
+  loadYaml,               // utility — parse a YAML config file
+  maskSecret,             // utility — mask a secret value for logging
+  parseEnvironments,      // environment — parse environments from YAML
+  createLoader,           // factory — create a SecretLoader for an EnvironmentConfig
 } from '@notoriosti/env-manager';
 ```
 
@@ -520,7 +700,7 @@ import type {
 npm test             # run tests (vitest)
 npm run test:watch   # vitest in watch mode
 npm run typecheck    # tsc --noEmit
-npm run build        # ESM + CJS output to dist/
+npm run build        # multi-entry build: library (ESM + CJS) + CLI to dist/
 ```
 
 ## License
