@@ -154,6 +154,41 @@ describe('resolution pipeline', () => {
     );
   });
 
+  it('per-variable origin:gcp override resolves async loader batches before get()', () => {
+    const repoRoot = createRepoRoot();
+    const configPath = writeRepoConfig(
+      repoRoot,
+      `
+      environments:
+        staging:
+          origin: local
+          dotenv_path: .env.staging
+          default: true
+        production:
+          origin: gcp
+          gcp_project_id: app-prod
+      variables:
+        GCP_SECRET:
+          source: GCP_SECRET
+          type: str
+          required: true
+          environment: production
+          origin: gcp
+      `,
+    );
+    writeText(join(repoRoot, '.env.staging'), 'GCP_SECRET=from-local-dotenv\n');
+    const fakeLoader = {
+      get: vi.fn(async () => 'from-async-gcp-loader'),
+      getMany: vi.fn(async () => ({ GCP_SECRET: 'from-async-gcp-loader' })),
+    };
+    vi.spyOn(factory, 'createLoader').mockReturnValue(fakeLoader as never);
+    vi.stubEnv('APP_ENV', 'staging');
+
+    const manager = new ConfigManager(configPath);
+
+    expect(manager.get('GCP_SECRET')).toBe('from-async-gcp-loader');
+  });
+
   it('process.env beats pinned environment lookup', () => {
     const repoRoot = createRepoRoot();
     const configPath = writeRepoConfig(

@@ -248,6 +248,45 @@ describe('TestEnvironmentSelection', () => {
     }
   });
 
+  it('manager-driven GCP selection resolves async loader results before returning required values', () => {
+    const repoRoot = createTempDir();
+    try {
+      const configPath = writeRepoConfig(
+        repoRoot,
+        `
+        environments:
+          development:
+            origin: local
+            dotenv_path: .env.dev
+            default: true
+          production:
+            origin: gcp
+            gcp_project_id: prod-project
+        variables:
+          payment_token:
+            source: PAYMENT_TOKEN
+            type: str
+            required: true
+            environment: production
+            secret_origin: gcp
+        `,
+      );
+      const fakeLoader = {
+        get: vi.fn(async () => 'payment-token'),
+        getMany: vi.fn(async () => ({ PAYMENT_TOKEN: 'payment-token' })),
+      };
+      vi.spyOn(factory, 'createLoader').mockReturnValue(fakeLoader as never);
+      vi.stubEnv('APP_ENV', 'development');
+
+      const manager = new ConfigManager(configPath);
+
+      expect(manager.get('payment_token')).toBe('payment-token');
+      expect(process.env.PAYMENT_TOKEN).toBe('payment-token');
+    } finally {
+      cleanupTempDir(repoRoot);
+    }
+  });
+
   it('rejects unknown environment in variable override', () => {
     const repoRoot = createTempDir();
     try {
