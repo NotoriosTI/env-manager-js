@@ -327,7 +327,7 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 - `"main"`, `"types"` fields for legacy CJS compatibility
 - `"scripts"`: `build`, `test`, `test:watch`, `prepublishOnly`
 
-#### Plan 8.3 — Public API surface (`src/index.ts`)
+#### Plan 8.3 — Public API surface (`src/index.ts`) COMPLETE (2026-03-31)
 - Re-export: `ConfigManager`, `initConfig`, `getConfig`, `requireConfig`, `createLoader`, `_resetSingleton` (test-only)
 - Re-export types: `SecretLoader`, `EnvironmentConfig`, `ConfigManagerOptions`
 - Matches Python `__init__.py` exports
@@ -419,5 +419,5 @@ Phase 1 (Bootstrap)
 
 ---
 
-*Last updated: 2026-03-30 (after Plan 1.3 completion — Phase 1 complete)*
+*Last updated: 2026-03-31 (after Plan 8.3 completion — PKG-04 public API surface verified in source and built outputs)*
 *Author: architect-agent*

@@ -3,16 +3,16 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: in_progress
-last_updated: "2026-03-31T00:37:28.179Z"
-last_activity: "2026-03-31 - Completed 08-02-PLAN.md (package exports, publint, attw, and npm pack dry-run verified)"
+last_updated: "2026-03-31T00:39:02.385Z"
+last_activity: "2026-03-31 - Completed 08-03-PLAN.md (PKG-04 public API verified in src/index.ts and built ESM/CJS entry points)"
 current_phase: "08"
-current_plan: "03"
+current_plan: "04"
 total_plans_in_phase: "04"
 progress:
   total_phases: 8
   completed_phases: 7
   total_plans: 29
-  completed_plans: 27
+  completed_plans: 28
 ---
 
 # Project State: env-manager-js
@@ -20,7 +20,7 @@ Last updated: 2026-03-31
 
 ## Current Phase
 
-**Phase 8 — Integration Verification + Publish** | IN PROGRESS (Plans 8.1 and 8.2 complete)
+**Phase 8 — Integration Verification + Publish** | IN PROGRESS (Plans 8.1, 8.2, and 8.3 complete)
 
 ## Phase Status
 
@@ -33,13 +33,13 @@ Last updated: 2026-03-31
 | 5 — Core Implementation: utils + environment | Complete | Plans 5.1, 5.2, 5.3 complete; 29 tests passing, typecheck clean |
 | 6 — Loaders + Factory | Complete | All 3 plans done (LOAD-01–09); factory memoized, all loaders implemented |
 | 7 — ConfigManager + Singleton | Complete | All 4 plans done (7.1–7.4); 61/61 Phase 7 tests passing |
-| 8 — Integration Verification + Publish | In progress | Plans 8.1 and 8.2 complete; full suite stable and package publish metadata validated |
+| 8 — Integration Verification + Publish | In progress | Plans 8.1, 8.2, and 8.3 complete; full suite stable, publish metadata validated, and PKG-04 public API verified |
 
 ## Requirement Coverage
 
 - Total v1 requirements: 68
 - Completed: 68 (PKG-01, PKG-02, PKG-03, PKG-04, UTIL-01–10, ENV-01–12, LOAD-01–09, RES-01–16, VAL-01–13, MGR-01–16)
-- Remaining: 0 (PKG-03 verified in Plan 8.2; PKG-04 already complete from Plan 8.1)
+- Remaining: 0 (PKG-03 verified in Plan 8.2; PKG-04 verified in Plan 8.3)
 
 ## Key Decisions Locked
 
@@ -85,6 +85,7 @@ Last updated: 2026-03-31
 - [Phase 08]: Use Vitest single-fork execution to isolate env-mutating test files instead of altering test logic.
 - [Phase 08]: Use nested import/require exports with types before default so TypeScript resolves both ESM and CJS publish entry points.
 - [Phase 08]: Keep top-level main and types as compatibility fallbacks for older tools that do not honor exports.
+- [Phase 08]: Public API verification is evidence-only work; validate both src/index.ts and built ESM/CJS entry points before changing exports.
 
 ## Performance Metrics
 
@@ -100,12 +101,13 @@ Last updated: 2026-03-31
 | 07 | 04 | 3min | 1 | 0 |
 | Phase 08 P01 | 1 min | 2 tasks | 1 files |
 | Phase 08 P02 | 1 min | 2 tasks | 1 files |
+| Phase 08 P03 | 1 min | 1 tasks | 0 files |
 
 ## Session Continuity
 
-- Stopped at: Completed 08-02-PLAN.md (package exports and publish validation completed; publint and attw clean)
+- Stopped at: Completed 08-03-PLAN.md (PKG-04 public API verified in src/index.ts and built ESM/CJS entry points)
 - Resume file: None
-- Next: 08-03-PLAN.md
+- Next: 08-04-PLAN.md
 
 - vitest 4.1.2 `mockReturnValue` + `new` incompatibility: use try/catch factory — `new SecretManagerServiceClient()` throws vitest 4 guard; fallback to calling as plain function returns mockClient. In production, `new` path succeeds.
 
@@ -121,4 +123,4 @@ Last updated: 2026-03-31
 |---|-------------|------|--------|-----------|
 | 1 | Create a Readme file for the project including installation, config, usage, etc | 2026-03-30 | 3467b47 | [1-create-a-readme-file-for-the-project-inc](./quick/1-create-a-readme-file-for-the-project-inc/) |
 
-Last activity: 2026-03-31 - Completed 08-02-PLAN.md (package exports, publint, attw, and npm pack dry-run verified)
+Last activity: 2026-03-31 - Completed 08-03-PLAN.md (PKG-04 public API verified in src/index.ts and built ESM/CJS entry points)
