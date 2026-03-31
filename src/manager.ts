@@ -6,7 +6,6 @@ import dotenv from 'dotenv';
 import type {
   ConfigManagerOptions,
   EnvironmentConfig,
-  MaybePromise,
   SecretOrigin,
   SourceContext,
   ValidationConfig,
@@ -82,9 +81,6 @@ function resolvePath(p: string, projectRoot: string): string {
   return isAbsolute(p) ? p : join(projectRoot, p);
 }
 
-function isPromiseLike<T>(value: MaybePromise<T>): value is Promise<T> {
-  return typeof value === 'object' && value !== null && 'then' in value;
-}
 
 export class ConfigManager {
   readonly activeEnvironment: EnvironmentConfig | null = null;
@@ -294,10 +290,6 @@ export class ConfigManager {
     // Set debug
     this._debug = options?.debug ?? false;
 
-    // autoLoad guard
-    if (options?.autoLoad !== false) {
-      this.load();
-    }
   }
 
   _defaultSourceContext(): SourceContext {
@@ -415,26 +407,19 @@ export class ConfigManager {
     return coerced;
   }
 
-  load(): MaybePromise<void> {
+  async load(): Promise<void> {
     if (this._loaded) return;
     if (this._loadingPromise !== null) return this._loadingPromise;
-
-    const loadResult = this._hasEnvironments
-      ? this._loadNewFormat()
-      : this._loadOldFormat();
-
-    if (isPromiseLike(loadResult)) {
-      this._loadingPromise = loadResult.then(() => {
-        this._loaded = true;
-        this._loadingPromise = null;
-      });
-      return this._loadingPromise;
-    }
-
-    this._loaded = true;
+    this._loadingPromise = (
+      this._hasEnvironments ? this._loadNewFormat() : this._loadOldFormat()
+    ).then(() => {
+      this._loaded = true;
+      this._loadingPromise = null;
+    });
+    return this._loadingPromise;
   }
 
-  private _loadNewFormat(): MaybePromise<void> {
+  private async _loadNewFormat(): Promise<void> {
     if (this._hasEnvironments) {
       // Classify variables: sourced (have explicit source key) vs default-only (no source key)
     }
@@ -513,9 +498,9 @@ export class ConfigManager {
         }
       };
 
-      const resolveFileResults = (): MaybePromise<Record<string, string | null>> => {
+      const resolveFileResults = async (): Promise<Record<string, string | null>> => {
         if (needFile.length === 0) {
-          return {};
+          return Promise.resolve({} as Record<string, string | null>);
         }
 
         if (secretOrigin === 'local') {
@@ -555,20 +540,15 @@ export class ConfigManager {
         return loader.getMany(needFile.map((i) => i.sourceKey));
       };
 
-      const fileResults = resolveFileResults();
-      if (isPromiseLike(fileResults)) {
-        groupLoads.push(fileResults.then((resolved) => storeGroupResults(resolved)));
-      } else {
-        storeGroupResults(fileResults);
-      }
+      groupLoads.push(
+        resolveFileResults().then((resolved) => storeGroupResults(resolved))
+      );
     }
 
-    if (groupLoads.length > 0) {
-      return Promise.all(groupLoads).then(() => {});
-    }
+    await Promise.all(groupLoads);
   }
 
-  private _loadOldFormat(): MaybePromise<void> {
+  private async _loadOldFormat(): Promise<void> {
     // OLD FORMAT (no environments section): use createLoader for explicit-source vars.
     // Validation (required/strict) happens here in load(), not deferred to get().
 
@@ -643,17 +623,11 @@ export class ConfigManager {
       }
     };
 
-    let loaderResults: MaybePromise<Record<string, string | null>> = {};
+    let loaderResults: Record<string, string | null> = {};
     if (needLoader.length > 0) {
       const loader = createLoader({ secretOrigin, gcpProjectId, dotenvPath });
       const loaderSourceKeys = needLoader.map((i) => i.sourceKey);
-      loaderResults = loader.getMany(loaderSourceKeys);
-    }
-
-    if (isPromiseLike(loaderResults)) {
-      return loaderResults.then((resolved) => {
-        storeLoaderResults(resolved);
-      });
+      loaderResults = await loader.getMany(loaderSourceKeys);
     }
 
     storeLoaderResults(loaderResults);
@@ -884,7 +858,7 @@ export async function initConfig(
     console.warn('Configuration manager already initialised. Call _resetSingleton() to reset.');
     return singleton;
   }
-  singleton = new ConfigManager(configPath, { ...options, autoLoad: false });
+  singleton = new ConfigManager(configPath, options);
   await singleton.load();
   return singleton;
 }
