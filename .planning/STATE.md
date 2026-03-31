@@ -4,7 +4,7 @@ milestone: v1.0
 milestone_name: Initial Release
 status: complete
 last_updated: "2026-03-31T06:28:33.743Z"
-last_activity: 2026-03-31 - Archived v1.0 milestone and prepared planning docs for the next milestone
+last_activity: 2026-03-31 - Completed quick task 260331-7lk: Fix npm deprecation warnings: node-domexception@1.0.0 and glob@10.5.0 that appear on npm install
 progress:
   total_phases: 11
   completed_phases: 11
@@ -44,6 +44,12 @@ Last updated: 2026-03-31
 
 - Start the next milestone with `$gsd-new-milestone`
 - Optionally archive raw phase directories later with `$gsd-cleanup`
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260331-7lk | Fix npm deprecation warnings: node-domexception@1.0.0 and glob@10.5.0 that appear on npm install | 2026-03-31 | 6407e35 | [260331-7lk-fix-npm-deprecation-warnings-node-domexc](./quick/260331-7lk-fix-npm-deprecation-warnings-node-domexc/) |
 
 ---
 *State updated: 2026-03-31 after v1.0 milestone completion*
