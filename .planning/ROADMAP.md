@@ -320,7 +320,7 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 - `tests/end-to-end.test.ts` passes (multi-source mixed load with mocked GCP)
 - Fix any remaining failures — implementation only, never tests
 
-#### Plan 8.2 — Package.json publish configuration
+#### Plan 8.2 — Package.json publish configuration COMPLETE (2026-03-31)
 - `"name": "env-manager"`, `"version": "0.1.0"`, `"type": "module"`
 - `"exports"` field: `"."` → `{ "import": "./dist/index.js", "types": "./dist/index.d.ts" }`
 - `"files": ["dist"]`
