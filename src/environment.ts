@@ -59,6 +59,13 @@ export function parseEnvironments(
       defaultEnvironmentName = name;
     }
 
+    // Parse optional encrypted_dotenv block
+    const rawEncrypted = rawEnvironment.encrypted_dotenv;
+    const encryptedDotenv =
+      isConfigMap(rawEncrypted) && rawEncrypted.enabled === true
+        ? { enabled: true }
+        : undefined;
+
     if (origin === 'local') {
       environments[name] = {
         name,
@@ -66,6 +73,7 @@ export function parseEnvironments(
         dotenvPath: typeof rawEnvironment.dotenv_path === 'string' ? rawEnvironment.dotenv_path : '.env',
         gcpProjectId: null,
         isDefault,
+        encryptedDotenv,
       };
       continue;
     }
@@ -80,6 +88,7 @@ export function parseEnvironments(
       dotenvPath: null,
       gcpProjectId: rawEnvironment.gcp_project_id,
       isDefault,
+      encryptedDotenv,
     };
   }
 

@@ -15,6 +15,7 @@ import type {
 } from './types.js';
 import { parseEnvironments } from './environment.js';
 import { _resetLoaderCache, createLoader } from './factory.js';
+import { DotEnvLoader } from './loaders/dotenv.js';
 import { coerceType, loadYaml, maskSecret } from './utils.js';
 
 let singleton: ConfigManager | null = null;
@@ -127,6 +128,8 @@ export class ConfigManager {
   private readonly _debug: boolean;
   private readonly _hasEnvironments: boolean;
   private readonly _dotenvValues: Record<string, string>;
+  /** Whether old-format top-level encrypted_dotenv support is enabled. */
+  private readonly _encryptedDotenvEnabled: boolean;
   private _values: Record<string, unknown> = {};
   private _loaded = false;
   private _loadingPromise: Promise<void> | null = null;
@@ -320,6 +323,17 @@ export class ConfigManager {
 
     // Set debug
     this._debug = options?.debug ?? false;
+
+    // Parse old-format top-level encrypted_dotenv config
+    const rawEncryptedDotenv = this._rawConfig.encrypted_dotenv;
+    if (
+      isPlainObject(rawEncryptedDotenv) &&
+      (rawEncryptedDotenv as Record<string, unknown>).enabled === true
+    ) {
+      this._encryptedDotenvEnabled = true;
+    } else {
+      this._encryptedDotenvEnabled = false;
+    }
 
   }
 
@@ -689,12 +703,27 @@ export class ConfigManager {
         return groupIssues;
       };
 
+      // Determine if encrypted dotenv is enabled for the active environment of this group.
+      const groupEnvName = groupInfos[0].ctx.environmentName;
+      const groupEnvConfig = this._environments[groupEnvName];
+      const groupEncryptedEnabled = groupEnvConfig?.encryptedDotenv?.enabled === true;
+
       const resolveFileResults = async (): Promise<Record<string, string | null>> => {
         if (needFile.length === 0) {
           return Promise.resolve({} as Record<string, string | null>);
         }
 
         if (secretOrigin === 'local') {
+          if (groupEncryptedEnabled && dotenvPath != null) {
+            // Encrypted dotenv mode: delegate to DotEnvLoader.
+            // DecryptionError propagates directly (not wrapped in ConfigValidationError).
+            const loader = new DotEnvLoader(dotenvPath, {
+              encrypted: true,
+              environmentName: groupEnvName,
+            });
+            return loader.getMany(needFile.map((i) => i.sourceKey));
+          }
+
           const fileResults: Record<string, string | null> = {};
           if (dotenvPath != null && existsSync(dotenvPath)) {
             try {
@@ -825,9 +854,18 @@ export class ConfigManager {
 
     let loaderResults: Record<string, string | null> = {};
     if (needLoader.length > 0) {
-      const loader = createLoader({ secretOrigin, gcpProjectId, dotenvPath });
       const loaderSourceKeys = needLoader.map((i) => i.sourceKey);
-      loaderResults = await loader.getMany(loaderSourceKeys);
+
+      if (this._encryptedDotenvEnabled && secretOrigin === 'local') {
+        // Encrypted old-format: use DotEnvLoader with encrypted mode.
+        // Old-format configs have no environment name — only the generic key chain is used.
+        // DecryptionError propagates directly (not wrapped in ConfigValidationError).
+        const loader = new DotEnvLoader(dotenvPath, { encrypted: true });
+        loaderResults = await loader.getMany(loaderSourceKeys);
+      } else {
+        const loader = createLoader({ secretOrigin, gcpProjectId, dotenvPath });
+        loaderResults = await loader.getMany(loaderSourceKeys);
+      }
     }
 
     storeLoaderResults(loaderResults);

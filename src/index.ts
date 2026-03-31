@@ -6,6 +6,7 @@ export {
   initConfig,
   requireConfig,
 } from './manager.js';
+export { DecryptionError } from './errors.js';
 export { coerceType, loadYaml, maskSecret } from './utils.js';
 export { parseEnvironments } from './environment.js';
 export { createLoader } from './factory.js';
@@ -14,6 +15,7 @@ export type {
   ConfigValidationIssue,
   ConfigValidationIssueType,
   ConfigManagerOptions,
+  DecryptionIssue,
   EnvironmentConfig,
   SecretLoader,
   SecretOrigin,
