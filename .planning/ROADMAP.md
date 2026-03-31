@@ -315,7 +315,7 @@ A behavior-preserving TypeScript port of the Python `env-manager` library, publi
 
 ### Plans
 
-#### Plan 8.1 — Full test suite run
+#### Plan 8.1 — Full test suite run COMPLETE (2026-03-31)
 - `npx vitest run` — zero failures
 - `tests/end-to-end.test.ts` passes (multi-source mixed load with mocked GCP)
 - Fix any remaining failures — implementation only, never tests

@@ -105,8 +105,8 @@ Requirements for initial release. Each maps to roadmap phases.
 
 - [ ] **PKG-01**: Project initialized with TypeScript, Vitest, ESM configuration
 - [x] **PKG-02**: All tests written before implementation (TDD)
-- [ ] **PKG-03**: npm publish-ready package.json with exports, types, files
-- [ ] **PKG-04**: Public API exports match Python's __init__.py
+- [x] **PKG-03**: npm publish-ready package.json with exports, types, files
+- [x] **PKG-04**: Public API exports match Python's __init__.py
 
 ## v2 Requirements
 
@@ -213,8 +213,8 @@ Requirements for initial release. Each maps to roadmap phases.
 | MGR-16 | Phase 7 | Not started |
 | PKG-01 | Phase 1 | Not started |
 | PKG-02 | Phase 3 | Complete |
-| PKG-03 | Phase 8 | Not started |
-| PKG-04 | Phase 8 | Not started |
+| PKG-03 | Phase 8 | Complete |
+| PKG-04 | Phase 8 | Complete |
 
 **Coverage:**
 - v1 requirements: 68 total
