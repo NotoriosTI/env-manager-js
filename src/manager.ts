@@ -4,6 +4,8 @@ import { dirname, isAbsolute, join, resolve } from 'path';
 import dotenv from 'dotenv';
 
 import type {
+  ConfigValidationIssue,
+  ConfigValidationIssueType,
   ConfigManagerOptions,
   EnvironmentConfig,
   SecretOrigin,
@@ -81,6 +83,33 @@ function resolvePath(p: string, projectRoot: string): string {
   return isAbsolute(p) ? p : join(projectRoot, p);
 }
 
+function createConfigValidationIssue(
+  variableName: string,
+  sourceKey: string,
+  issueType: ConfigValidationIssueType,
+  message: string,
+  context: SourceContext,
+): ConfigValidationIssue {
+  return {
+    variableName,
+    issueType,
+    message,
+    sourceKey,
+    context,
+  };
+}
+
+export class ConfigValidationError extends Error {
+  readonly issues: readonly ConfigValidationIssue[];
+
+  constructor(issues: readonly ConfigValidationIssue[]) {
+    super(
+      `Config validation failed with ${issues.length} issue${issues.length === 1 ? '' : 's'}.`,
+    );
+    this.name = 'ConfigValidationError';
+    this.issues = [...issues];
+  }
+}
 
 export class ConfigManager {
   readonly activeEnvironment: EnvironmentConfig | null = null;
@@ -385,6 +414,46 @@ export class ConfigManager {
     _processEnvWrites.add(key);
   }
 
+  private _createMissingIssue(
+    name: string,
+    def: VariableDefinition,
+    ctx: SourceContext,
+    sourceKey: string,
+    ctxLabel: string = buildContextLabel(ctx),
+  ): ConfigValidationIssue | null {
+    if (this._strict) {
+      return createConfigValidationIssue(
+        name,
+        sourceKey,
+        'missing',
+        `Strict mode: variable '${name}' is missing from source '${sourceKey}' in ${ctxLabel}.`,
+        ctx,
+      );
+    }
+
+    if (def.required === true && def.default === undefined) {
+      return createConfigValidationIssue(
+        name,
+        sourceKey,
+        'missing',
+        `Required variable '${name}' not found in source '${sourceKey}' for ${ctxLabel}.`,
+        ctx,
+      );
+    }
+
+    return null;
+  }
+
+  private _createInvalidIssue(
+    name: string,
+    sourceKey: string,
+    ctx: SourceContext,
+    error: unknown,
+  ): ConfigValidationIssue {
+    const message = error instanceof Error ? error.message : String(error);
+    return createConfigValidationIssue(name, sourceKey, 'invalid', message, ctx);
+  }
+
   private _finalizeLoadedValue(
     name: string,
     sourceKey: string,
@@ -433,6 +502,7 @@ export class ConfigManager {
     }
 
     const sourcedVars: SourcingInfo[] = [];
+    const issues: ConfigValidationIssue[] = [];
 
     for (const [name, def] of Object.entries(this._variables)) {
       if (def.source == null) {
@@ -478,7 +548,7 @@ export class ConfigManager {
       // Fetch remaining vars from file/GCP
       const storeGroupResults = (fileResults: Record<string, string | null>): void => {
         for (const info of groupInfos) {
-          const { name, def, sourceKey } = info;
+          const { name, def, sourceKey, ctx } = info;
 
           let rawValue: unknown = null;
           if (fromProcessEnv.has(name)) {
@@ -494,7 +564,19 @@ export class ConfigManager {
             rawValue = def.default;
           }
 
-          this._finalizeLoadedValue(name, sourceKey, def, rawValue);
+          if (rawValue === null) {
+            const issue = this._createMissingIssue(name, def, ctx, sourceKey);
+            if (issue !== null) {
+              issues.push(issue);
+              continue;
+            }
+          }
+
+          try {
+            this._finalizeLoadedValue(name, sourceKey, def, rawValue);
+          } catch (error) {
+            issues.push(this._createInvalidIssue(name, sourceKey, ctx, error));
+          }
         }
       };
 
@@ -546,6 +628,10 @@ export class ConfigManager {
     }
 
     await Promise.all(groupLoads);
+
+    if (issues.length > 0) {
+      throw new ConfigValidationError(issues);
+    }
   }
 
   private async _loadOldFormat(): Promise<void> {

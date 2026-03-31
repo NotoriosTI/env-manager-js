@@ -1,5 +1,6 @@
 export {
   ConfigManager,
+  ConfigValidationError,
   _resetSingleton,
   getConfig,
   initConfig,
@@ -10,6 +11,8 @@ export { parseEnvironments } from './environment.js';
 export { createLoader } from './factory.js';
 export { DotEnvLoader, GCPSecretLoader } from './loaders/index.js';
 export type {
+  ConfigValidationIssue,
+  ConfigValidationIssueType,
   ConfigManagerOptions,
   EnvironmentConfig,
   SecretLoader,

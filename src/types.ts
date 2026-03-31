@@ -40,6 +40,16 @@ export interface SourceContext {
   dotenvPath: string | null;
 }
 
+export type ConfigValidationIssueType = 'missing' | 'invalid';
+
+export interface ConfigValidationIssue {
+  variableName: string;
+  issueType: ConfigValidationIssueType;
+  message: string;
+  sourceKey: string;
+  context: SourceContext;
+}
+
 export interface ConfigManagerOptions {
   secretOrigin?: SecretOrigin;
   gcpProjectId?: string | null;
