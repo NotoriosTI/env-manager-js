@@ -1,6 +1,13 @@
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
 
+export const DOTENVX_PUBLIC_KEY =
+  '037cfbfc90234cfdab7eb54050566293789efaa1a35dc420749662db400dc9c4b2';
+export const DOTENVX_PRIVATE_KEY =
+  '81dac4d2c42e67a2c6542d3b943a4674a05c4be5e7e5a40a689be7a3bd49a07e';
+export const DOTENVX_ENCRYPTED_HELLO =
+  'encrypted:BAZb6wDPFaFeFzq8Ut48oiNFSPtYvJmv4AwVDFVcNKiIcGxrxuRIFGWxZ3xVjxOgOo6w65bWFTpAfbatSz52+VvwDYZ3nFUO828nzovH5ZhsIoxPuPb7K0ZphmNynR7Hxci4a+fB';
+
 /**
  * Write dedented YAML text to tmpDir/config.yaml and return the path.
  * Mirrors Python's write_config() helper in conftest.py.
@@ -24,6 +31,26 @@ export function writeEnv(tmpDir: string, content = 'DB_PASSWORD=secret123\n'): s
 export function writeText(path: string, content: string): string {
   writeFileSync(path, content, 'utf8');
   return path;
+}
+
+export function buildEncryptedEnvText(lines: string[] = []): string {
+  return [
+    '#/-------------------[DOTENV_PUBLIC_KEY]--------------------/',
+    '#/            public-key encryption for .env files          /',
+    '#/----------------------------------------------------------/',
+    `DOTENV_PUBLIC_KEY="${DOTENVX_PUBLIC_KEY}"`,
+    `HELLO="${DOTENVX_ENCRYPTED_HELLO}"`,
+    'PLAIN=still-plain',
+    ...lines,
+    '',
+  ].join('\n');
+}
+
+export function writeEncryptedEnv(tmpDir: string, lines: string[] = []): string {
+  return writeEnv(
+    tmpDir,
+    buildEncryptedEnvText(lines),
+  );
 }
 
 /**

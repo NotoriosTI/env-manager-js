@@ -22,10 +22,11 @@ import { fileURLToPath } from 'url';
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import * as publicApi from '../src/index.js';
 import { ConfigManager as PublicConfigManager, ConfigValidationError } from '../src/index.js';
 import { GCPSecretLoader } from '../src/loaders/gcp.js';
 import { ConfigManager } from '../src/manager.js';
-import { writeRepoConfig } from './helpers.js';
+import { buildEncryptedEnvText, writeRepoConfig, writeText } from './helpers.js';
 
 const __fixturesDir = resolve(dirname(fileURLToPath(import.meta.url)), 'fixtures');
 
@@ -52,6 +53,45 @@ afterEach(() => {
 // ─── .env.test ────────────────────────────────────────────────────────────────
 
 describe('integration: .env.test file', () => {
+  it('DecryptionError is exported from the public barrel for instanceof checks and issue inspection', async () => {
+    const root = createRepoRoot();
+    writeText(join(root, '.env.encrypted'), buildEncryptedEnvText());
+
+    const configPath = writeRepoConfig(
+      root,
+      `
+      environments:
+        test:
+          origin: local
+          dotenv_path: .env.encrypted
+          default: true
+          encrypted_dotenv:
+            enabled: true
+      variables:
+        HELLO_SECRET:
+          source: HELLO
+          type: str
+          required: true
+      `,
+    );
+
+    const DecryptionError = (publicApi as Record<string, unknown>).DecryptionError as
+      | (new (...args: never[]) => Error)
+      | undefined;
+    const manager = new PublicConfigManager(configPath);
+    const error = await manager.load().catch((rejection: unknown) => rejection);
+
+    expect(DecryptionError).toBeTypeOf('function');
+    expect(error).toBeInstanceOf(DecryptionError as new (...args: never[]) => Error);
+    expect(error).toMatchObject({ name: 'DecryptionError' });
+    expect(error).toHaveProperty('issues');
+    expect(
+      ((error as { issues?: Array<Record<string, unknown>> }).issues ?? []).some(
+        (issue) => String(issue.key ?? issue.sourceKey ?? issue.variableName) === 'HELLO',
+      ),
+    ).toBe(true);
+  });
+
   it('ConfigValidationError is exported from the public barrel for instanceof checks', async () => {
     const root = createRepoRoot();
     seedFixtures(root, '.env.test');

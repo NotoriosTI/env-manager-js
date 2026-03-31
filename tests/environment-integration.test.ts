@@ -6,7 +6,14 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import * as factory from '../src/factory.js';
 import { ConfigManager, getConfig, initConfig, requireConfig } from '../src/manager.js';
-import { writeConfig, writeEnv, writeRepoConfig } from './helpers.js';
+import {
+  DOTENVX_PRIVATE_KEY,
+  buildEncryptedEnvText,
+  writeConfig,
+  writeEnv,
+  writeRepoConfig,
+  writeText,
+} from './helpers.js';
 
 function createTempDir(): string {
   return mkdtempSync(join(tmpdir(), 'env-manager-environment-'));
@@ -494,6 +501,169 @@ describe('TestBackwardsCompatibility', () => {
       expect(warnSpy).toHaveBeenCalledWith(
         "Optional variable 'optional_value' is not set",
       );
+    } finally {
+      cleanupTempDir(repoRoot);
+    }
+  });
+});
+
+describe('TestEncryptedDotenvEnvironments', () => {
+  it('encrypted dotenv activation is per-environment and decrypts when enabled', async () => {
+    const repoRoot = createTempDir();
+    try {
+      const configPath = writeRepoConfig(
+        repoRoot,
+        `
+        environments:
+          development:
+            origin: local
+            dotenv_path: .env.dev
+            default: true
+          production:
+            origin: local
+            dotenv_path: .env.production
+            encrypted_dotenv:
+              enabled: true
+        variables:
+          hello_secret:
+            source: HELLO
+            type: str
+            required: true
+        `,
+      );
+      writeText(join(repoRoot, '.env.dev'), 'HELLO=dev-plain\n');
+      writeText(join(repoRoot, '.env.production'), buildEncryptedEnvText());
+      vi.stubEnv('APP_ENV', 'production');
+      vi.stubEnv('DOTENV_PRIVATE_KEY', DOTENVX_PRIVATE_KEY);
+
+      const manager = new ConfigManager(configPath);
+      await manager.load();
+
+      expect(manager.get('hello_secret')).toBe('Hello');
+    } finally {
+      cleanupTempDir(repoRoot);
+    }
+  });
+
+  it('plaintext environments keep current dotenv behavior when encrypted dotenv support is unused', async () => {
+    const repoRoot = createTempDir();
+    try {
+      const configPath = writeRepoConfig(
+        repoRoot,
+        `
+        environments:
+          development:
+            origin: local
+            dotenv_path: .env.dev
+            default: true
+          production:
+            origin: local
+            dotenv_path: .env.production
+            encrypted_dotenv:
+              enabled: true
+        variables:
+          hello_secret:
+            source: HELLO
+            type: str
+            required: true
+        `,
+      );
+      writeText(join(repoRoot, '.env.dev'), 'HELLO=dev-plain\n');
+      writeText(join(repoRoot, '.env.production'), buildEncryptedEnvText());
+      vi.stubEnv('APP_ENV', 'development');
+
+      const manager = new ConfigManager(configPath);
+      await manager.load();
+
+      expect(manager.get('hello_secret')).toBe('dev-plain');
+    } finally {
+      cleanupTempDir(repoRoot);
+    }
+  });
+
+  it('encrypted dotenv private key can come from a dedicated local dotenv source before the fallback private key chain', async () => {
+    const repoRoot = createTempDir();
+    try {
+      const configPath = writeRepoConfig(
+        repoRoot,
+        `
+        environments:
+          production:
+            origin: local
+            dotenv_path: .env.production
+            default: true
+            encrypted_dotenv:
+              enabled: true
+              private_key:
+                source: CUSTOM_PRIVATE_KEY
+                secret_origin: local
+                dotenv_path: .env.production.keys
+        variables:
+          hello_secret:
+            source: HELLO
+            type: str
+            required: true
+        `,
+      );
+      writeText(join(repoRoot, '.env.production'), buildEncryptedEnvText());
+      writeText(
+        join(repoRoot, '.env.production.keys'),
+        `CUSTOM_PRIVATE_KEY=${DOTENVX_PRIVATE_KEY}\n`,
+      );
+      vi.stubEnv('DOTENV_PRIVATE_KEY', 'deadbeef');
+
+      const manager = new ConfigManager(configPath);
+      await manager.load();
+
+      expect(manager.get('hello_secret')).toBe('Hello');
+    } finally {
+      cleanupTempDir(repoRoot);
+    }
+  });
+
+  it('encrypted dotenv private key can come from a dedicated gcp source before the fallback private key chain', async () => {
+    const repoRoot = createTempDir();
+    try {
+      const configPath = writeRepoConfig(
+        repoRoot,
+        `
+        environments:
+          production:
+            origin: local
+            dotenv_path: .env.production
+            default: true
+            encrypted_dotenv:
+              enabled: true
+              private_key:
+                source: ENCRYPTION_PRIVATE_KEY
+                secret_origin: gcp
+                gcp_project_id: encryption-project
+        variables:
+          hello_secret:
+            source: HELLO
+            type: str
+            required: true
+        `,
+      );
+      writeText(join(repoRoot, '.env.production'), buildEncryptedEnvText());
+      const gcpLoader = {
+        get: vi.fn().mockResolvedValue(DOTENVX_PRIVATE_KEY),
+        getMany: vi.fn().mockResolvedValue({
+          ENCRYPTION_PRIVATE_KEY: DOTENVX_PRIVATE_KEY,
+        }),
+      };
+      vi.spyOn(factory, 'createLoader').mockReturnValue(gcpLoader as never);
+
+      const manager = new ConfigManager(configPath);
+      await manager.load();
+
+      expect(factory.createLoader).toHaveBeenCalledWith(
+        expect.objectContaining({
+          secretOrigin: 'gcp',
+          gcpProjectId: 'encryption-project',
+        }),
+      );
+      expect(manager.get('hello_secret')).toBe('Hello');
     } finally {
       cleanupTempDir(repoRoot);
     }
