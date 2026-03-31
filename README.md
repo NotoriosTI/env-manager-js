@@ -39,18 +39,59 @@ variables:
 
 2. Use the singleton API in your application:
 
+**Local origin (synchronous):**
+
 ```ts
-import { initConfig, getConfig } from 'env-manager';
+import { initConfig, getConfig } from '@notoriosti/env-manager';
 
 // Initialize once at startup
 initConfig('./config.yaml');
 
-// Retrieve values anywhere
-const port = getConfig('PORT');       // 8080 (number, from default)
-const dbPass = getConfig('DB_PASSWORD'); // value from .env or GCP
+// Retrieve values synchronously — local .env reads are sync
+const port = getConfig('PORT');          // 8080 (number, from default)
+const dbPass = getConfig('DB_PASSWORD'); // value from .env
+```
+
+**GCP Secret Manager origin (asynchronous):**
+
+```ts
+import { initConfig, getConfig } from '@notoriosti/env-manager';
+
+async function main() {
+  initConfig('./config.yaml');
+
+  // GCP Secret Manager calls are async — must await
+  const dbPass = await getConfig('DB_PASSWORD');
+  const port = await getConfig('PORT');
+}
+main();
 ```
 
 3. Values are also written to `process.env` after loading, so libraries that read `process.env` directly will see them.
+
+## Async Behavior
+
+Whether `get()` / `getConfig()` / `requireConfig()` return a plain value or a `Promise` depends on the **secret origin** for that variable.
+
+| Origin | `load()` | `get()` / `getConfig()` |
+|--------|----------|------------------------|
+| `local` (default) | synchronous | synchronous — returns the value directly |
+| `gcp` | returns `Promise<void>` | returns `Promise<value>` — must `await` |
+
+**Why:** GCP Secret Manager access goes over the network, so `GCPSecretLoader.get()` is always async. The `ConfigManager` constructor fires `load()` automatically but cannot `await` it, so loading continues in the background. When you call `get()` on a not-yet-loaded manager, it returns a `Promise` that waits for loading to finish before resolving.
+
+**Rule of thumb:** if any environment in your config uses `origin: gcp`, always `await` your `getConfig()` calls. Wrapping your startup code in an `async` function is the simplest pattern:
+
+```ts
+async function main() {
+  initConfig('./config/env.yaml');
+  const url = await getConfig('SERVICE_URL');
+  // ...
+}
+main();
+```
+
+For local-only configs there is no async overhead — `getConfig()` returns the value synchronously and `await` on a non-Promise is a no-op, so the pattern above works for both origins.
 
 ## Configuration File
 
@@ -228,8 +269,8 @@ By default, the constructor calls `load()` automatically. Pass `autoLoad: false`
 
 | Method | Returns | Description |
 |--------|---------|-------------|
-| `load()` | `void` | Load all variables. No-op if already loaded. Called automatically unless `autoLoad: false`. |
-| `get(name)` | `unknown \| null` | Get a loaded variable value. Returns `null` if not found (unless `required` or `strict`). |
+| `load()` | `void \| Promise<void>` | Load all variables. Returns a `Promise` when the origin is GCP; otherwise synchronous. No-op if already loaded. Called automatically unless `autoLoad: false`. |
+| `get(name)` | `unknown \| null \| Promise<unknown \| null>` | Get a loaded variable value. Returns a `Promise` when loading is pending (GCP origin) or when the value is fetched lazily from GCP. Returns `null` if not found (unless `required` or `strict`). |
 
 ### `ConfigManagerOptions`
 
@@ -259,12 +300,12 @@ Create and store a singleton `ConfigManager`. If a singleton already exists, log
 #### `getConfig(name?)`
 
 - Without arguments: returns the singleton `ConfigManager` instance, or `null` if not initialized.
-- With a variable name: returns `singleton.get(name)`, or `null` if singleton is not initialized.
+- With a variable name: returns `singleton.get(name)`, or `null` if singleton is not initialized. **Returns a `Promise` when the origin is GCP** — always `await` when using GCP secrets.
 
 #### `requireConfig(name?)`
 
 - Without arguments: returns the singleton `ConfigManager` instance, or throws if not initialized.
-- With a variable name: returns the value or throws if the value is `null`/`undefined` or the singleton is not initialized.
+- With a variable name: returns the value or throws if the value is `null`/`undefined` or the singleton is not initialized. **Returns a `Promise` when the origin is GCP** — `await` to get the resolved value.
 
 #### `_resetSingleton()`
 
