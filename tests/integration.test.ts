@@ -201,9 +201,16 @@ describe('integration: .env.test file', () => {
     );
 
     const manager = new ConfigManager(configPath);
-    await manager.load();
-
-    expect(() => manager.get('MISSING_VAR')).toThrow(/Required variable 'MISSING_VAR'/);
+    await expect(manager.load()).rejects.toMatchObject({
+      name: 'ConfigValidationError',
+      issues: [
+        expect.objectContaining({
+          variableName: 'MISSING_VAR',
+          issueType: 'missing',
+          sourceKey: 'MISSING_VAR',
+        }),
+      ],
+    });
   });
 });
 
@@ -271,9 +278,16 @@ describe('integration: .env.prod file', () => {
     );
 
     const manager = new ConfigManager(configPath, { strict: true });
-    await manager.load();
-
-    expect(() => manager.get('NONEXISTENT')).toThrow(/Strict mode/);
+    await expect(manager.load()).rejects.toMatchObject({
+      name: 'ConfigValidationError',
+      issues: [
+        expect.objectContaining({
+          variableName: 'NONEXISTENT',
+          issueType: 'missing',
+          sourceKey: 'NONEXISTENT',
+        }),
+      ],
+    });
   });
 
   it('default value is used when variable is absent and not required', async () => {

@@ -183,11 +183,23 @@ describe('resolution validation', () => {
     vi.stubEnv('APP_ENV', 'default');
 
     const manager = new ConfigManager(configPath);
-    await manager.load();
-
-    expect(() => manager.get('API_KEY')).toThrow(
-      `Required variable 'API_KEY' not found in source 'API_KEY' for environment 'default' using local .env '${dotenvPath}'.`,
-    );
+    await expect(manager.load()).rejects.toMatchObject({
+      name: 'ConfigValidationError',
+      issues: [
+        {
+          variableName: 'API_KEY',
+          issueType: 'missing',
+          sourceKey: 'API_KEY',
+          message: `Required variable 'API_KEY' not found in source 'API_KEY' for environment 'default' using local .env '${dotenvPath}'.`,
+          context: {
+            environmentName: 'default',
+            secretOrigin: 'local',
+            gcpProjectId: null,
+            dotenvPath,
+          },
+        },
+      ],
+    });
   });
 
   it('required with default warns "using YAML default"', async () => {
@@ -304,11 +316,17 @@ describe('resolution validation', () => {
     vi.stubEnv('APP_ENV', 'default');
 
     const manager = new ConfigManager(configPath, { strict: true });
-    await manager.load();
-
-    expect(() => manager.get('OPTIONAL_TOKEN')).toThrow(
-      `Strict mode: variable 'OPTIONAL_TOKEN' is missing from source 'OPTIONAL_TOKEN' in environment 'default' using local .env '${dotenvPath}'.`,
-    );
+    await expect(manager.load()).rejects.toMatchObject({
+      name: 'ConfigValidationError',
+      issues: [
+        {
+          variableName: 'OPTIONAL_TOKEN',
+          issueType: 'missing',
+          sourceKey: 'OPTIONAL_TOKEN',
+          message: `Strict mode: variable 'OPTIONAL_TOKEN' is missing from source 'OPTIONAL_TOKEN' in environment 'default' using local .env '${dotenvPath}'.`,
+        },
+      ],
+    });
   });
 
   it('GCP context in missing value messages', async () => {
@@ -332,11 +350,24 @@ describe('resolution validation', () => {
     vi.spyOn(factory, 'createLoader').mockReturnValue(createFakeLoader({ API_KEY: null }) as never);
 
     const manager = new ConfigManager(configPath);
-    await manager.load();
-
-    expect(() => manager.get('API_KEY')).toThrow(
-      "Required variable 'API_KEY' not found in source 'API_KEY' for environment 'default' using GCP project 'app-prod'.",
-    );
+    await expect(manager.load()).rejects.toMatchObject({
+      name: 'ConfigValidationError',
+      issues: [
+        {
+          variableName: 'API_KEY',
+          issueType: 'missing',
+          sourceKey: 'API_KEY',
+          message:
+            "Required variable 'API_KEY' not found in source 'API_KEY' for environment 'default' using GCP project 'app-prod'.",
+          context: {
+            environmentName: 'default',
+            secretOrigin: 'gcp',
+            gcpProjectId: 'app-prod',
+            dotenvPath: null,
+          },
+        },
+      ],
+    });
   });
 
   it('missing per-variable dotenv raises only when lookup needs file', async () => {

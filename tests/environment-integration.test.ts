@@ -458,9 +458,17 @@ describe('TestBackwardsCompatibility', () => {
       writeEnv(repoRoot, '');
 
       const manager = new ConfigManager(configPath);
-      await expect(manager.load()).rejects.toThrow(
-        "Required variable 'db_password' not found in source",
-      );
+      await expect(manager.load()).rejects.toMatchObject({
+        name: 'ConfigValidationError',
+        issues: [
+          {
+            variableName: 'db_password',
+            issueType: 'missing',
+            sourceKey: 'DB_PASSWORD',
+            message: "Required variable 'db_password' not found in source",
+          },
+        ],
+      });
     } finally {
       cleanupTempDir(repoRoot);
     }

@@ -81,9 +81,17 @@ variables:
     const dotenvPath = writeEnv(tmpDir, '');
 
     const manager = new ConfigManager(configPath, { dotenvPath });
-    await expect(manager.load()).rejects.toThrow(
-      "Required variable 'DB_PASSWORD' not found in source",
-    );
+    await expect(manager.load()).rejects.toMatchObject({
+      name: 'ConfigValidationError',
+      issues: [
+        {
+          variableName: 'DB_PASSWORD',
+          issueType: 'missing',
+          sourceKey: 'DB_PASSWORD',
+          message: "Required variable 'DB_PASSWORD' not found in source",
+        },
+      ],
+    });
   });
 
   it('ConfigValidationError aggregates every strict mode missing required variable from one old-format load attempt', async () => {
@@ -200,9 +208,17 @@ variables:
     const dotenvPath = writeEnv(tmpDir, '');
 
     const manager = new ConfigManager(configPath, { dotenvPath, strict: true });
-    await expect(manager.load()).rejects.toThrow(
-      "Strict mode: variable 'DB_PASSWORD' is missing",
-    );
+    await expect(manager.load()).rejects.toMatchObject({
+      name: 'ConfigValidationError',
+      issues: [
+        {
+          variableName: 'DB_PASSWORD',
+          issueType: 'missing',
+          sourceKey: 'DB_PASSWORD',
+          message: "Strict mode: variable 'DB_PASSWORD' is missing",
+        },
+      ],
+    });
   });
 
   it('retry load() on the same manager after a rejected old-format attempt', async () => {
