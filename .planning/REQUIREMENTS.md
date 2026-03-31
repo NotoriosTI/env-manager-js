@@ -22,6 +22,18 @@ Requirements for milestone `v0.2.0 / Milestone 2`.
 - [x] **ENC-05**: User can configure which secret name should be read for the private decryption key instead of being limited to `DOTENV_PRIVATE_KEY`
 - [x] **ENC-06**: User can load the private decryption key from local dotenv-backed sources or GCP Secret Manager, not only from process environment variables or `.env.keys`
 
+### CLI Encryption (Phase 03.1)
+
+- [x] **CLI-01**: `encrypt` command generates a secp256k1 key pair and writes `DOTENV_PUBLIC_KEY` to the target `.env` file
+- [x] **CLI-02**: `encrypt` command rewrites each plaintext value as `encrypted:<base64>` and the ciphertext decrypts back to the original value
+- [x] **CLI-03**: `encrypt` command writes the private key to a colocated `.env.keys` file in dotenvx format
+- [x] **CLI-04**: `encrypt` command skips values already prefixed with `encrypted:`
+- [x] **CLI-05**: `encrypt` command skips the `DOTENV_PUBLIC_KEY` variable itself (never encrypts the public key)
+- [x] **CLI-06**: `encrypt` command refuses when a `.env.keys` file already exists unless `--force` is passed
+- [x] **CLI-07**: Encrypted output round-trips through `DotEnvLoader` with `encrypted: true` and the matching private key
+- [ ] **CLI-08**: User can invoke the encrypt command as a standalone CLI binary via `npx env-manager-encrypt <file>`
+- [ ] **CLI-09**: The CLI binary is bundled by tsup, registered in package.json bin, and included in the npm tarball
+
 ### Typed Access
 
 - [ ] **TYPE-01**: Consumer can call `getConfig<T>(name)` and `requireConfig<T>(name)` with generic type parameters without breaking existing untyped call sites
@@ -80,6 +92,15 @@ Which phases cover which requirements. Updated during roadmap creation.
 | ENC-04 | Phase 03 | Complete |
 | ENC-05 | Phase 03 | Complete |
 | ENC-06 | Phase 03 | Complete |
+| CLI-01 | Phase 03.1 | Complete |
+| CLI-02 | Phase 03.1 | Complete |
+| CLI-03 | Phase 03.1 | Complete |
+| CLI-04 | Phase 03.1 | Complete |
+| CLI-05 | Phase 03.1 | Complete |
+| CLI-06 | Phase 03.1 | Complete |
+| CLI-07 | Phase 03.1 | Complete |
+| CLI-08 | Phase 03.1 | Pending |
+| CLI-09 | Phase 03.1 | Pending |
 | TYPE-01 | Phase 04 | Pending |
 | TYPE-02 | Phase 04 | Pending |
 | TYPE-03 | Phase 05 | Pending |
@@ -88,10 +109,10 @@ Which phases cover which requirements. Updated during roadmap creation.
 | EXP-01 | Phase 06 | Pending |
 
 **Coverage:**
-- Milestone 2 requirements: 15 total
-- Mapped to phases: 15
-- Unmapped: 0 ✓
+- Milestone 2 requirements: 24 total
+- Mapped to phases: 24
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-03-31*
-*Last updated: 2026-03-31 after renaming the active milestone to v0.2.0 / Milestone 2*
+*Last updated: 2026-03-31 after adding CLI encryption requirements for Phase 03.1*

@@ -61,6 +61,17 @@ Plans:
 - [ ] 03-02-PLAN.md — Add exported DecryptionError/types and implement dotenvx-compatible loader decryption with lazy private-key lookup
 - [ ] 03-03-PLAN.md — Wire encrypted dotenv config through environment/manager resolution and close the phase with the regression gate
 
+### Phase 03.1: Add CLI script to encrypt dotenv files with key management (INSERTED)
+
+**Goal:** Users can encrypt plaintext .env files into dotenvx-compatible encrypted format with automatic key pair generation and .env.keys file output.
+**Requirements**: CLI-01, CLI-02, CLI-03, CLI-04, CLI-05, CLI-06, CLI-07, CLI-08, CLI-09
+**Depends on:** Phase 03
+**Plans:** 1/2 plans executed
+
+Plans:
+- [x] 03.1-01-PLAN.md — Implement core encryption module with TDD tests for key generation, value encryption, round-trip verification, and edge cases
+- [ ] 03.1-02-PLAN.md — Wire CLI entry point with arg parsing, tsup multi-entry build, and package.json bin registration
+
 ### Phase 04: Generic Typed Retrieval
 **Goal**: Consumers can opt into typed config reads and validator-backed retrieval without breaking existing untyped access patterns.
 **Depends on**: Phase 03
@@ -109,6 +120,7 @@ Plans:
 | 01. Async API Refactor | 2/2 | Complete | 2026-03-31 |
 | 02. Validation Diagnostics | 2/2 | Complete   | 2026-03-31 |
 | 03. Encrypted Dotenv Support | 1/3 | Complete    | 2026-03-31 |
+| 03.1. CLI Encrypt | 1/2 | In Progress|  |
 | 04. Generic Typed Retrieval | 0/TBD | Not started | - |
 | 05. Schema-Safe Config Access | 0/TBD | Not started | - |
 | 06. Runtime Ergonomics | 0/TBD | Not started | - |
@@ -124,3 +136,15 @@ Plans:
 Plans:
 - [x] 01-01: Remove `MaybePromise` and `autoLoad`; make dotenv loading async
 - [x] 01-02: Refactor manager loading flow, migrate tests, and ship `v0.1.2`
+
+
+## Backlog
+
+### Phase 999.1: Implementation of encrypted variable loading from non-local origin (BACKLOG)
+
+**Goal:** Implement encrypted dotenv decryption support for non-local origins (e.g. GCP Secret Manager), removing the NotImplementedError guard added in quick task 260331-k8v.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)

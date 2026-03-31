@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v0.2.0
 milestone_name: / Milestone 2
 status: executing
-stopped_at: Completed 03-03-PLAN.md
-last_updated: "2026-03-31T17:27:09.570Z"
+stopped_at: Completed 03.1-01-PLAN.md
+last_updated: "2026-03-31T18:52:48.668Z"
 last_activity: 2026-03-31
 progress:
-  total_phases: 6
+  total_phases: 8
   completed_phases: 3
-  total_plans: 7
-  completed_plans: 7
+  total_plans: 9
+  completed_plans: 8
   percent: 71
 ---
 
@@ -23,12 +23,12 @@ Last updated: 2026-03-31
 See: `.planning/PROJECT.md` (updated 2026-03-31)
 
 **Core value:** Behavior parity with the Python implementation remains the primary value.
-**Current focus:** Phase 03 - Encrypted Dotenv Support execution
+**Current focus:** Phase 03.1 — add-cli-script-to-encrypt-dotenv-files-with-key-management
 
 ## Current Position
 
-Phase: 04 of 06 (generic typed retrieval)
-Plan: Not started
+Phase: 03.1 (add-cli-script-to-encrypt-dotenv-files-with-key-management) — EXECUTING
+Plan: 2 of 2
 Status: Ready to execute
 Last activity: 2026-03-31
 
@@ -42,6 +42,10 @@ Progress: [███████░░░] 71%
 - Recent trend: Phase 03 regression coverage is committed and ready for the runtime implementation plans
 
 ## Accumulated Context
+
+### Roadmap Evolution
+
+- Phase 03.1 inserted after Phase 03: Add CLI script to encrypt dotenv files with key management (URGENT)
 
 ### Decisions
 
@@ -60,6 +64,15 @@ Progress: [███████░░░] 71%
 - [Phase 03]: Per-environment encrypted_dotenv.enabled stored in EnvironmentConfig so _loadNewFormat can activate encrypted mode per-group
 - [Phase 03]: Reused createLoader for dedicated private-key source resolution instead of a new abstraction
 - [Phase 03]: explicitPrivateKey as a DotEnvLoaderOptions field rather than a runtime callback — simpler interface, no closure complexity
+- [Phase 03.1]: Refuse (throw) when DOTENV_PUBLIC_KEY already present — prevents key mismatch from silent re-encryption
+- [Phase 03.1]: Use ESM top-level import for eciesjs in CLI module (not CJS require workaround from synchronous loader)
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commit | Directory |
+|---|-------------|------|--------|-----------|
+| 260331-k8v | Add NotImplementedError when secretOrigin is non-local with encrypted dotenv | 2026-03-31 | b8ac608 | [260331-k8v-add-notimplementederror-when-secretorigi](./quick/260331-k8v-add-notimplementederror-when-secretorigi/) |
+| Phase 03.1-add-cli-script-to-encrypt-dotenv-files-with-key-management P01 | 3 | 1 tasks | 2 files |
 
 ### Pending Todos
 
@@ -72,8 +85,8 @@ None captured outside the milestone roadmap.
 
 ## Session Continuity
 
-Last session: 2026-03-31T17:21:02.375Z
-Stopped at: Completed 03-03-PLAN.md
+Last session: 2026-03-31T18:52:48.664Z
+Stopped at: Completed 03.1-01-PLAN.md
 Resume file: None
 
 ---
