@@ -3,9 +3,12 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "",
   "type": "module",
+  "bin": {
+    "env-manager-encrypt": "./dist/encrypt.js"
+  },
   "main": "./dist/index.cjs",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -41,6 +44,7 @@
   "dependencies": {
     "@google-cloud/secret-manager": "^6.1.1",
     "dotenv": "^17.3.1",
+    "eciesjs": "^0.4.18",
     "yaml": "^2.8.3"
   },
   "devDependencies": {
