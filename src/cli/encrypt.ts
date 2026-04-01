@@ -78,7 +78,7 @@ export async function encryptDotenvFile(options: EncryptOptions): Promise<Encryp
   // Generate a new secp256k1 key pair
   const key = new PrivateKey();
   const publicKeyHex = key.publicKey.toHex(); // 66-char compressed hex
-  const privateKeyHex = key.secret.toString('hex'); // 64-char hex
+  const privateKeyHex = Buffer.from(key.secret).toString('hex'); // 64-char hex
 
   let encryptedCount = 0;
   let skippedCount = 0;
@@ -95,7 +95,7 @@ export async function encryptDotenvFile(options: EncryptOptions): Promise<Encryp
       skippedCount++;
     } else {
       const cipherBuf = encrypt(publicKeyHex, Buffer.from(value, 'utf8'));
-      encryptedEntries[k] = 'encrypted:' + cipherBuf.toString('base64');
+      encryptedEntries[k] = 'encrypted:' + Buffer.from(cipherBuf).toString('base64');
       encryptedCount++;
     }
   }
