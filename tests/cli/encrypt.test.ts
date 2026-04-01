@@ -195,3 +195,64 @@ describe('encryptDotenvFile', () => {
     expect(keysContent).not.toContain('DOTENV_PRIVATE_KEY="');
   });
 });
+
+describe('encryptDotenvFile — -o flag', () => {
+  it('Test A (output-flag-separate-file): writes encrypted content to outputPath, input unchanged', async () => {
+    const tmpDir = makeTmp();
+    const envPath = path.join(tmpDir, '.env');
+    const outPath = path.join(tmpDir, '.env.encrypted');
+    const originalContent = 'HELLO=World\n';
+    fs.writeFileSync(envPath, originalContent);
+
+    const result = await encryptDotenvFile({ filePath: envPath, outputPath: outPath });
+
+    // outPath exists and contains DOTENV_PUBLIC_KEY and encrypted: values
+    expect(fs.existsSync(outPath)).toBe(true);
+    const outContent = fs.readFileSync(outPath, 'utf8');
+    expect(outContent).toContain('DOTENV_PUBLIC_KEY=');
+    expect(outContent).toContain('encrypted:');
+
+    // Input file is unchanged
+    const inputContent = fs.readFileSync(envPath, 'utf8');
+    expect(inputContent).toBe(originalContent);
+
+    // .env.keys is in the same dir as outPath
+    const keysPath = path.join(tmpDir, '.env.keys');
+    expect(fs.existsSync(keysPath)).toBe(true);
+
+    // result counts are as expected
+    expect(result.encryptedCount).toBe(1);
+  });
+
+  it('Test B (output-flag-keys-location): .env.keys colocated with outputPath, not inputPath', async () => {
+    const inputDir = makeTmp();
+    const outputDir = makeTmp();
+    const envPath = path.join(inputDir, '.env');
+    const outPath = path.join(outputDir, '.env.encrypted');
+    fs.writeFileSync(envPath, 'SECRET=abc\n');
+
+    await encryptDotenvFile({ filePath: envPath, outputPath: outPath });
+
+    // .env.keys must be in outputDir
+    const keysInOutputDir = path.join(outputDir, '.env.keys');
+    expect(fs.existsSync(keysInOutputDir)).toBe(true);
+
+    // .env.keys must NOT be in inputDir
+    const keysInInputDir = path.join(inputDir, '.env.keys');
+    expect(fs.existsSync(keysInInputDir)).toBe(false);
+  });
+
+  it('Test D (input-unchanged-after-o): input file bytes are identical before and after call', async () => {
+    const tmpDir = makeTmp();
+    const envPath = path.join(tmpDir, '.env');
+    const outPath = path.join(tmpDir, '.env.encrypted');
+    const originalContent = 'KEY1=value1\nKEY2=value2\n';
+    fs.writeFileSync(envPath, originalContent);
+
+    const beforeBytes = fs.readFileSync(envPath);
+    await encryptDotenvFile({ filePath: envPath, outputPath: outPath });
+    const afterBytes = fs.readFileSync(envPath);
+
+    expect(afterBytes).toEqual(beforeBytes);
+  });
+});
