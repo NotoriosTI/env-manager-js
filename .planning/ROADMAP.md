@@ -149,3 +149,30 @@ Plans:
 
 Plans:
 - [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.2: GCP secret version fallback when latest key is destroyed (BACKLOG)
+
+**Goal:** When the latest version of a GCP secret is destroyed, fall back to the most recent accessible version instead of failing. Verify whether the same fallback gap exists for regular (non-encrypted) variable loading from GCP.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
+
+### Phase 999.3: Security hardening for encrypted dotenv attack surfaces (BACKLOG)
+
+**Goal:** Address the attack surfaces identified during encrypted dotenv security analysis: prevent accidental `.env.keys` commit, harden the private key lifecycle, and close env-injection and path-traversal gaps.
+**Requirements:** TBD
+**Plans:** 0 plans
+
+Captured concerns (from security analysis 2026-03-31):
+- `.env.keys` silent disk fallback — add pre-commit hook or CI check to block accidental key commit
+- `privateKeyHex` returned in `EncryptResult` — consider zeroing or omitting from return value
+- `process.env` unconditional win — document risk of env-injection bypassing encrypted file in container/serverless environments
+- `explicitPrivateKey` as plain string — evaluate secure memory handling or zeroization after use
+- `normalizeEnvName` collision — `"prod.us"` and `"prod_us"` both normalize to `"PROD_US"`, silent wrong-key resolution
+- `--force` silently discards previous keypair with no confirmation or backup prompt
+- `findDotenv` walks to filesystem root — may pick up unintended parent `.env` in monorepo setups
+
+Plans:
+- [ ] TBD (promote with /gsd:review-backlog when ready)
