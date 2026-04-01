@@ -10,6 +10,8 @@ export interface EncryptOptions {
   force?: boolean;
   /** Environment name — if set, private key is written as DOTENV_PRIVATE_KEY_<NORMALIZED> */
   env?: string;
+  /** If provided, write the encrypted .env to this path instead of overwriting the input file. The input file is left unchanged. */
+  outputPath?: string;
 }
 
 export interface EncryptResult {
@@ -49,10 +51,11 @@ const DOTENVX_HEADER = [
  * - Writes the private key to `.env.keys` in the same directory.
  */
 export async function encryptDotenvFile(options: EncryptOptions): Promise<EncryptResult> {
-  const { filePath, force = false, env } = options;
+  const { filePath, force = false, env, outputPath } = options;
 
-  const fileDir = path.dirname(filePath);
-  const keysFilePath = path.join(fileDir, '.env.keys');
+  const effectiveOutputPath = outputPath ?? filePath;
+  const keysDir = path.dirname(effectiveOutputPath);
+  const keysFilePath = path.join(keysDir, '.env.keys');
 
   // Guard: refuse if .env.keys exists and force is not set
   if (fs.existsSync(keysFilePath) && !force) {
@@ -105,8 +108,8 @@ export async function encryptDotenvFile(options: EncryptOptions): Promise<Encryp
     .join('\n');
   const envContent = headerBlock + publicKeyLine + '\n' + bodyLines + '\n';
 
-  // Write the encrypted .env back (overwrite)
-  fs.writeFileSync(filePath, envContent, 'utf8');
+  // Write the encrypted .env to effectiveOutputPath (overwrite input or separate output file)
+  fs.writeFileSync(effectiveOutputPath, envContent, 'utf8');
 
   // Build .env.keys content
   const basename = path.basename(filePath);
@@ -132,6 +135,7 @@ Arguments:
 Options:
   --env <name>    Environment name (writes DOTENV_PRIVATE_KEY_<NAME> in .env.keys)
   --force         Overwrite existing .env.keys file
+  -o, --output <file>  Write encrypted output to this file instead of overwriting the input
   --help          Show this help message`);
 }
 
@@ -148,13 +152,16 @@ async function main(): Promise<void> {
   let filePath: string | undefined;
   let env: string | undefined;
   let force = false;
+  let outputPath: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--env' && i + 1 < args.length) {
       env = args[++i];
     } else if (args[i] === '--force') {
       force = true;
-    } else if (!args[i].startsWith('--')) {
+    } else if ((args[i] === '-o' || args[i] === '--output') && i + 1 < args.length) {
+      outputPath = args[++i];
+    } else if (!args[i].startsWith('--') && !args[i].startsWith('-')) {
       filePath = args[i];
     }
   }
@@ -167,7 +174,7 @@ async function main(): Promise<void> {
   }
 
   try {
-    const result = await encryptDotenvFile({ filePath, env, force });
+    const result = await encryptDotenvFile({ filePath, env, force, outputPath });
     console.log(`Encrypted ${result.encryptedCount} value(s), skipped ${result.skippedCount} already-encrypted value(s)`);
     console.log(`Public key:  ${result.publicKeyHex}`);
     console.log(`Private key written to .env.keys`);
