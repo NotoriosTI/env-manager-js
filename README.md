@@ -622,6 +622,48 @@ node dist/app.js
 
 ---
 
+## CLI: Decrypt .env Files
+
+The `env-manager-decrypt` CLI reverses `env-manager-encrypt`, restoring a dotenvx-compatible encrypted `.env` file to plaintext.
+
+### Usage
+
+```bash
+npx env-manager-decrypt <file> [--env <name>] [--key <hex>] [-o <outfile>]
+```
+
+| Argument | Description |
+|----------|-------------|
+| `<file>` | Path to the encrypted `.env` file |
+| `--env <name>` | Environment name. Reads `DOTENV_PRIVATE_KEY_<NAME>` from `.env.keys`. |
+| `--key <hex>` | Private key hex string. Skips `.env.keys` lookup entirely. |
+| `-o, --output <file>` | Write decrypted output to this file instead of overwriting the input. |
+
+### What It Does
+
+1. Reads the private key from a colocated `.env.keys` file (or `--key`).
+2. Decrypts all `encrypted:` prefixed values using ECIES.
+3. Strips `DOTENV_PUBLIC_KEY` and the dotenvx header from the output.
+4. Writes the plaintext `.env` back (or to `-o` if specified).
+
+### Examples
+
+```bash
+# Decrypt in place (reads private key from .env.keys automatically)
+npx env-manager-decrypt .env
+
+# Decrypt using an environment-specific key
+npx env-manager-decrypt .env --env development
+
+# Decrypt to a separate file, keeping the encrypted file intact
+npx env-manager-decrypt .env -o .env.plain
+
+# Decrypt using a key provided directly
+npx env-manager-decrypt .env --key <private-key-hex>
+```
+
+---
+
 ## Validation Errors
 
 `load()` aggregates all validation issues into a single `ConfigValidationError` rather than failing on the first problem. This lets you see all missing or invalid variables at once.
