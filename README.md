@@ -564,7 +564,7 @@ The `env-manager-encrypt` CLI encrypts a plaintext `.env` file in place, produci
 ### Usage
 
 ```bash
-npx env-manager-encrypt <file> [--env <name>] [--force]
+npx env-manager-encrypt <file> [--env <name>] [--force] [-o <outfile>]
 ```
 
 | Argument | Description |
@@ -572,6 +572,7 @@ npx env-manager-encrypt <file> [--env <name>] [--force]
 | `<file>` | Path to the `.env` file to encrypt |
 | `--env <name>` | Environment name. Writes `DOTENV_PRIVATE_KEY_<NAME>` in `.env.keys` instead of `DOTENV_PRIVATE_KEY`. |
 | `--force` | Overwrite an existing `.env.keys` file. |
+| `-o, --output <file>` | Write encrypted output to this file instead of overwriting the input. The input file is left unchanged. |
 
 ### What It Does
 
@@ -593,6 +594,9 @@ Values already prefixed with `encrypted:` are skipped.
 npx env-manager-encrypt .env --env development
 
 # .env is now encrypted, .env.keys contains DOTENV_PRIVATE_KEY_DEVELOPMENT
+
+# Encrypt to a separate file, keeping the original .env intact
+npx env-manager-encrypt .env -o .env.encrypted --env development
 
 # 2. Configure config.yaml
 ```
