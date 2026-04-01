@@ -16,4 +16,11 @@ export default defineConfig([
     banner: { js: '#!/usr/bin/env node' },
     clean: false,
   },
+  {
+    entry: ['src/cli/decrypt.ts'],
+    format: ['esm'],
+    target: 'es2022',
+    banner: { js: '#!/usr/bin/env node' },
+    clean: false,
+  },
 ]);

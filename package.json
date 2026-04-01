@@ -3,11 +3,12 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "",
   "type": "module",
   "bin": {
-    "env-manager-encrypt": "./dist/encrypt.js"
+    "env-manager-encrypt": "./dist/encrypt.js",
+    "env-manager-decrypt": "./dist/decrypt.js"
   },
   "main": "./dist/index.cjs",
   "types": "./dist/index.d.ts",
