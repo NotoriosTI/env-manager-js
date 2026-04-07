@@ -751,6 +751,10 @@ npm run typecheck    # tsc --noEmit
 npm run build        # multi-entry build: library (ESM + CJS) + CLI to dist/
 ```
 
+## Related Projects
+
+Looking for a Python version? Check out **[env-manager](https://github.com/NotoriosTI/env-manager)** — the original Python implementation with full feature parity. Both projects share the same YAML config format, secret resolution logic, and API design, so you can use whichever fits your stack.
+
 ## License
 
 ISC
