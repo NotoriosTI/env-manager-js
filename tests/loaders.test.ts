@@ -1,7 +1,8 @@
 import { mkdtempSync } from 'fs';
 import { tmpdir } from 'os';
 import { join } from 'path';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { PrivateKey, encrypt } from 'eciesjs';
 
 import { DotEnvLoader } from '../src/loaders/dotenv.js';
 import { GCPSecretLoader, type GCPSecretClient } from '../src/loaders/gcp.js';
@@ -25,12 +26,18 @@ function createDotEnvLoader(dotenvPath: string, options?: Record<string, unknown
   );
 }
 
-const DOTENVX_PUBLIC_KEY =
-  '037cfbfc90234cfdab7eb54050566293789efaa1a35dc420749662db400dc9c4b2';
-const DOTENVX_PRIVATE_KEY =
-  '81dac4d2c42e67a2c6542d3b943a4674a05c4be5e7e5a40a689be7a3bd49a07e';
-const DOTENVX_ENCRYPTED_HELLO =
-  'encrypted:BEtoMgw9hIeDil0vniI+Owi5vyRbPTN/I2szWSNvTXjql6s68pN1cTTfdy1W1RBEIjIg25IsochNf8YTQ46FjB5yRTbtKfWiQu+jCiqJEmjnMkV+4GgNhphGuRA5FMH/SG45rbSR';
+// Ephemeral keypair and ciphertext — generated at test runtime, never committed.
+let DOTENVX_PUBLIC_KEY: string;
+let DOTENVX_PRIVATE_KEY: string;
+let DOTENVX_ENCRYPTED_HELLO: string;
+
+beforeAll(() => {
+  const ephemeralKey = new PrivateKey();
+  DOTENVX_PUBLIC_KEY = ephemeralKey.publicKey.toHex();
+  DOTENVX_PRIVATE_KEY = ephemeralKey.secret.toString('hex');
+  const cipherBytes = encrypt(ephemeralKey.publicKey.toBytes(), Buffer.from('Hello'));
+  DOTENVX_ENCRYPTED_HELLO = 'encrypted:' + Buffer.from(cipherBytes).toString('base64');
+});
 
 function writeEncryptedEnv(
   tmpDir: string,
