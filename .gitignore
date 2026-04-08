@@ -23,6 +23,8 @@ ssl/*.crt
 .playwright-mcp/
 
 .planning/
-.claude
+.claude/*
+!.claude/skills/
+!.claude/skills/**
 CLAUDE.md
 *.tgz
