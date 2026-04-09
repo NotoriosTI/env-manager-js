@@ -142,6 +142,63 @@ describe('DotEnvLoader', () => {
     await expect(loader.get('PLAIN')).resolves.toBe('still-plain');
   });
 
+  it('emits a warning when process.env overrides a key that exists in the encrypted file', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEncryptedEnv(tmpDir);
+    vi.stubEnv('HELLO', 'from-process-env');
+    vi.stubEnv('DOTENV_PRIVATE_KEY', DOTENVX_PRIVATE_KEY);
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const loader = createDotEnvLoader(envPath, { encrypted: true });
+    await loader.get('HELLO');
+
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('"HELLO"'),
+    );
+    // Value must NOT appear in the warning
+    expect(warnSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining('from-process-env'),
+    );
+
+    warnSpy.mockRestore();
+  });
+
+  it('does not warn when process.env key is absent from the dotenv file', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEnv(tmpDir, 'DB_PASSWORD=secret123\n');
+    vi.stubEnv('SOME_OTHER_KEY', 'injected');
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const loader = new DotEnvLoader(envPath);
+    await loader.get('SOME_OTHER_KEY');
+
+    expect(warnSpy).not.toHaveBeenCalled();
+
+    warnSpy.mockRestore();
+  });
+
+  it('warns when process.env overrides a key that exists in a plain dotenv file', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEnv(tmpDir, 'DB_PASSWORD=secret123\n');
+    vi.stubEnv('DB_PASSWORD', 'from-env');
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const loader = new DotEnvLoader(envPath);
+    await loader.get('DB_PASSWORD');
+
+    // Warning fires for plain files too (key exists in parsedValues)
+    expect(warnSpy).toHaveBeenCalledOnce();
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('"DB_PASSWORD"'),
+    );
+
+    warnSpy.mockRestore();
+  });
+
   it('normalizes environment names before deriving the env-specific private key name', async () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
     const envPath = writeEncryptedEnv(tmpDir);
