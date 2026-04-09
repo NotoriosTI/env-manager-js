@@ -217,6 +217,37 @@ describe('DotEnvLoader', () => {
     warnSpy.mockRestore();
   });
 
+  it('does not throw when .env.keys file is absent', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEncryptedEnv(tmpDir);
+    // No .env.keys written — existsSync returns false, try/catch not entered
+
+    const loader = createDotEnvLoader(envPath, { encrypted: true });
+
+    // No private key available → DecryptionError, not a filesystem error
+    await expect(loader.get('HELLO')).rejects.toMatchObject({ name: 'DecryptionError' });
+  });
+
+  it('throws a descriptive error when .env.keys is unreadable (EACCES)', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEncryptedEnv(tmpDir);
+    const keysPath = join(tmpDir, '.env.keys');
+    writeText(keysPath, `DOTENV_PRIVATE_KEY=${DOTENVX_PRIVATE_KEY}\n`);
+
+    // Make the file unreadable
+    const { chmodSync } = await import('fs');
+    chmodSync(keysPath, 0o000);
+
+    const loader = createDotEnvLoader(envPath, { encrypted: true });
+
+    try {
+      await expect(loader.get('HELLO')).rejects.toThrow(/Failed to read key file at/);
+    } finally {
+      // Restore so tmpDir cleanup doesn't fail
+      chmodSync(keysPath, 0o644);
+    }
+  });
+
   it('raises one structured DecryptionError when an encrypted value cannot be decrypted', async () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
     const envPath = writeEncryptedEnv(tmpDir);
