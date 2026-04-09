@@ -475,6 +475,34 @@ variables:
     expect(logSpy).toHaveBeenCalledWith(expect.stringContaining('Loaded DB_PASSWORD: secret123'));
   });
 
+  it('debug mode still masks values when NODE_ENV=production', async () => {
+    const tmpDir = createTempDir();
+    const configPath = writeConfig(
+      tmpDir,
+      `
+variables:
+  DB_PASSWORD:
+    source: DB_PASSWORD
+    type: str
+    required: true
+`,
+    );
+    const dotenvPath = writeEnv(tmpDir, 'DB_PASSWORD=super-secret\n');
+    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    const originalNodeEnv = process.env.NODE_ENV;
+    process.env.NODE_ENV = 'production';
+
+    try {
+      const manager = new ConfigManager(configPath, { dotenvPath, debug: true });
+      await manager.load();
+
+      expect(logSpy).toHaveBeenCalledWith(`Loaded DB_PASSWORD: ${maskSecret('super-secret')}`);
+      expect(logSpy).not.toHaveBeenCalledWith(expect.stringContaining('super-secret'));
+    } finally {
+      process.env.NODE_ENV = originalNodeEnv;
+    }
+  });
+
   it('normal mode logs masked loaded values using maskSecret semantics', async () => {
     const tmpDir = createTempDir();
     const configPath = writeConfig(
