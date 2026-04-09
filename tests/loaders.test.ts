@@ -200,6 +200,23 @@ describe('DotEnvLoader', () => {
     await expect(loader.get('HELLO')).resolves.toBe('Hello');
   });
 
+  it('emits a warning when colocated .env.keys is found and used', async () => {
+    const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
+    const envPath = writeEncryptedEnv(tmpDir);
+    writeText(join(tmpDir, '.env.keys'), `DOTENV_PRIVATE_KEY=${DOTENVX_PRIVATE_KEY}\n`);
+
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const loader = createDotEnvLoader(envPath, { encrypted: true });
+    await loader.get('HELLO');
+
+    expect(warnSpy).toHaveBeenCalledWith(
+      expect.stringContaining('.env.keys found in the same directory'),
+    );
+
+    warnSpy.mockRestore();
+  });
+
   it('raises one structured DecryptionError when an encrypted value cannot be decrypted', async () => {
     const tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-loaders-'));
     const envPath = writeEncryptedEnv(tmpDir);
