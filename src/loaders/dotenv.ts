@@ -76,6 +76,9 @@ function resolvePrivateKey(
   const dotenvDir = path.dirname(dotenvFilePath);
   const keysFilePath = path.join(dotenvDir, '.env.keys');
   if (fs.existsSync(keysFilePath)) {
+    console.warn(
+      '[env-manager] Warning: .env.keys found in the same directory as your encrypted file. Move it to a secure location outside the project.',
+    );
     try {
       const keysContent = fs.readFileSync(keysFilePath);
       const keysValues = dotenv.parse(keysContent);

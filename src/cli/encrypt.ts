@@ -120,6 +120,9 @@ export async function encryptDotenvFile(options: EncryptOptions): Promise<Encryp
 
   // Write .env.keys
   fs.writeFileSync(keysFilePath, keysContent, 'utf8');
+  console.warn(
+    `[env-manager] Warning: .env.keys was written to the same directory as your encrypted file (${keysDir}). Move it to a secure location outside the project.`,
+  );
 
   return { publicKeyHex, privateKeyHex, encryptedCount, skippedCount };
 }
