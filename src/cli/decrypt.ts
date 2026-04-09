@@ -6,7 +6,7 @@ import { PrivateKey, decrypt } from 'eciesjs';
 export interface DecryptOptions {
   /** Path to the encrypted .env file */
   filePath: string;
-  /** Hex private key — if omitted, read from colocated .env.keys */
+  /** Hex private key for programmatic use — CLI always uses DOTENV_PRIVATE_KEY env var or .env.keys */
   privateKeyHex?: string;
   /** Write decrypted output here instead of overwriting the input file */
   outputPath?: string;
@@ -20,7 +20,7 @@ export interface DecryptResult {
 function loadPrivateKeyFromKeysFile(envFilePath: string, envName?: string): string {
   const keysFilePath = path.join(path.dirname(envFilePath), '.env.keys');
   if (!fs.existsSync(keysFilePath)) {
-    throw new Error(`.env.keys not found at ${keysFilePath}. Provide a key with --key.`);
+    throw new Error(`.env.keys not found at ${keysFilePath}.`);
   }
   const parsed = dotenv.parse(fs.readFileSync(keysFilePath));
   if (envName != null && envName !== '') {
@@ -40,7 +40,7 @@ function loadPrivateKeyFromKeysFile(envFilePath: string, envName?: string): stri
  * restoring the original plaintext values.
  *
  * Behavior:
- * - Reads the private key from .env.keys unless --key is provided.
+ * - Reads the private key from DOTENV_PRIVATE_KEY env var or .env.keys file.
  * - Strips the DOTENV_PUBLIC_KEY line from the output.
  * - Strips the dotenvx header comment block from the output.
  * - Skips values not prefixed with `encrypted:`.
@@ -58,7 +58,18 @@ export async function decryptDotenvFile(options: DecryptOptions, envName?: strin
   const parsed = dotenv.parse(raw);
 
   if (!privateKeyHex) {
-    privateKeyHex = loadPrivateKeyFromKeysFile(filePath, envName);
+    // Prefer environment variable over .env.keys file
+    privateKeyHex = process.env.DOTENV_PRIVATE_KEY;
+  }
+
+  if (!privateKeyHex) {
+    try {
+      privateKeyHex = loadPrivateKeyFromKeysFile(filePath, envName);
+    } catch {
+      throw new Error(
+        'No private key found. Set DOTENV_PRIVATE_KEY environment variable or provide a .env.keys file.'
+      );
+    }
   }
 
   const privateKeyBuf = Buffer.from(privateKeyHex, 'hex');
@@ -105,9 +116,12 @@ Arguments:
 
 Options:
   --env <name>       Environment name (reads DOTENV_PRIVATE_KEY_<NAME> from .env.keys)
-  --key <hex>        Private key hex (skips .env.keys lookup)
   -o, --output <file>  Write decrypted output to this file instead of overwriting the input
-  --help             Show this help message`);
+  --help             Show this help message
+
+Key resolution order:
+  1. DOTENV_PRIVATE_KEY environment variable
+  2. .env.keys file co-located with the encrypted file`);
 }
 
 async function main(): Promise<void> {
@@ -121,14 +135,11 @@ async function main(): Promise<void> {
 
   let filePath: string | undefined;
   let env: string | undefined;
-  let privateKeyHex: string | undefined;
   let outputPath: string | undefined;
 
   for (let i = 0; i < args.length; i++) {
     if (args[i] === '--env' && i + 1 < args.length) {
       env = args[++i];
-    } else if (args[i] === '--key' && i + 1 < args.length) {
-      privateKeyHex = args[++i];
     } else if ((args[i] === '-o' || args[i] === '--output') && i + 1 < args.length) {
       outputPath = args[++i];
     } else if (!args[i].startsWith('--') && !args[i].startsWith('-')) {
@@ -144,7 +155,7 @@ async function main(): Promise<void> {
   }
 
   try {
-    const result = await decryptDotenvFile({ filePath, privateKeyHex, outputPath }, env);
+    const result = await decryptDotenvFile({ filePath, outputPath }, env);
     console.log(`Decrypted ${result.decryptedCount} value(s), skipped ${result.skippedCount} plaintext value(s)`);
   } catch (err) {
     console.error(`Error: ${err instanceof Error ? err.message : String(err)}`);
