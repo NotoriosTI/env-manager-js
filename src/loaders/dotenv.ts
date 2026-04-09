@@ -85,8 +85,11 @@ function resolvePrivateKey(
       if (keysValues.DOTENV_PRIVATE_KEY != null) {
         return keysValues.DOTENV_PRIVATE_KEY;
       }
-    } catch {
-      // Silently ignore unreadable .env.keys
+    } catch (err: any) {
+      if (err.code !== 'ENOENT') {
+        throw new Error(`Failed to read key file at ${keysFilePath}: ${err.message}`);
+      }
+      // ENOENT: file not present, fall through to next key source
     }
   }
 
