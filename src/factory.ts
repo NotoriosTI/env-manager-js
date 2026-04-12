@@ -1,6 +1,7 @@
 import type { SecretLoader, SourceContext } from './types.js';
 import { DotEnvLoader } from './loaders/dotenv.js';
 import { GCPSecretLoader } from './loaders/gcp.js';
+import { ORIGIN_ALIASES } from './environment.js';
 
 export interface LoaderFactoryContext
   extends Pick<SourceContext, 'secretOrigin' | 'gcpProjectId' | 'dotenvPath'> {}
@@ -9,7 +10,8 @@ const loaderCache = new Map<string, SecretLoader>();
 
 export function createLoader(context: LoaderFactoryContext): SecretLoader {
   const { secretOrigin, gcpProjectId, dotenvPath } = context;
-  const normalizedOrigin = (secretOrigin ?? '').toLowerCase();
+  const rawOrigin = (secretOrigin ?? '').toLowerCase();
+  const normalizedOrigin = ORIGIN_ALIASES[rawOrigin] ?? rawOrigin;
   const cacheKey = `${normalizedOrigin}:${gcpProjectId ?? ''}:${dotenvPath ?? ''}`;
 
   if (loaderCache.has(cacheKey)) {

@@ -1,5 +1,15 @@
 import type { EncryptedDotenvConfig, EnvironmentConfig, PrivateKeyConfig } from './types.js';
 
+export const ORIGIN_ALIASES: Record<string, 'local' | 'gcp'> = {
+  dotenv:               'local',
+  'env-file':           'local',
+  '.env':               'local',
+  'gcp-secretmanager':  'gcp',
+  'gcp-secret-manager': 'gcp',
+  secretmanager:        'gcp',
+};
+export const CANONICAL_ORIGINS = new Set<string>(['local', 'gcp']);
+
 type ConfigMap = Record<string, unknown>;
 
 function isConfigMap(value: unknown): value is ConfigMap {
@@ -39,11 +49,12 @@ export function parseEnvironments(
       );
     }
 
-    const origin = rawOrigin.toLowerCase();
+    const rawLower = rawOrigin.toLowerCase();
+    const origin = (ORIGIN_ALIASES[rawLower] ?? rawLower) as 'local' | 'gcp';
 
-    if (origin !== 'local' && origin !== 'gcp') {
+    if (!CANONICAL_ORIGINS.has(origin)) {
       throw new Error(
-        `Invalid origin '${rawOrigin}' in environment '${name}'. Must be 'local' or 'gcp'`,
+        `Invalid origin '${rawOrigin}' in environment '${name}'. Must be 'local' or 'gcp' (or an alias)`,
       );
     }
 

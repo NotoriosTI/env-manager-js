@@ -13,7 +13,7 @@ import type {
   ValidationConfig,
   VariableDefinition,
 } from './types.js';
-import { parseEnvironments } from './environment.js';
+import { CANONICAL_ORIGINS, ORIGIN_ALIASES, parseEnvironments } from './environment.js';
 import { NotImplementedError } from './errors.js';
 import { _resetLoaderCache, createLoader } from './factory.js';
 import { DotEnvLoader } from './loaders/dotenv.js';
@@ -248,10 +248,13 @@ export class ConfigManager {
           `Unknown environment '${varDef.environment}' referenced by variable '${varName}'`,
         );
       }
-      const originOverride = varDef.secretOrigin ?? varDef.origin;
-      if (originOverride != null && originOverride !== 'local' && originOverride !== 'gcp') {
+      const rawOverride = varDef.secretOrigin ?? varDef.origin;
+      const originOverride = rawOverride != null
+        ? ((ORIGIN_ALIASES[rawOverride.toLowerCase()] ?? rawOverride.toLowerCase()) as SecretOrigin)
+        : null;
+      if (originOverride != null && !CANONICAL_ORIGINS.has(originOverride)) {
         throw new Error(
-          `Invalid secret_origin '${originOverride}' for variable '${varName}'. Must be 'local' or 'gcp'`,
+          `Invalid secret_origin '${rawOverride}' for variable '${varName}'. Must be 'local' or 'gcp' (or an alias)`,
         );
       }
     }
@@ -369,9 +372,12 @@ export class ConfigManager {
     }
 
     // Apply origin override (secretOrigin or origin key)
-    const originOverride = varDef.secretOrigin ?? varDef.origin;
+    const rawOriginOverride = varDef.secretOrigin ?? varDef.origin;
+    const originOverride = rawOriginOverride != null
+      ? (ORIGIN_ALIASES[rawOriginOverride.toLowerCase()] ?? rawOriginOverride.toLowerCase()) as SecretOrigin
+      : null;
     if (originOverride != null) {
-      const origin = originOverride as SecretOrigin;
+      const origin = originOverride;
       ctx = { ...ctx, secretOrigin: origin };
       if (origin === 'gcp') {
         // GCP origin: dotenvPath is always null (dotenv is irrelevant for GCP secrets)
