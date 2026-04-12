@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { parseEnvironments } from '../src/environment.js';
+import { CANONICAL_ORIGINS, ORIGIN_ALIASES, parseEnvironments } from '../src/environment.js';
 
 describe('parseEnvironments', () => {
   it('returns empty object when no environments key', () => {
@@ -62,7 +62,34 @@ describe('parseEnvironments', () => {
           },
         },
       }),
-    ).toThrow("Invalid origin 'vault' in environment 'staging'. Must be 'local' or 'gcp'");
+    ).toThrow("Invalid origin 'vault' in environment 'staging'. Must be 'local' or 'gcp' (or an alias)");
+  });
+
+  it.each(['dotenv', 'env-file', '.env'])('alias %s resolves to local', (alias) => {
+    const environments = parseEnvironments({
+      environments: {
+        dev: { origin: alias },
+      },
+    });
+    expect(environments.dev.origin).toBe('local');
+  });
+
+  it.each(['gcp-secretmanager', 'gcp-secret-manager', 'secretmanager'])(
+    'alias %s resolves to gcp',
+    (alias) => {
+      const environments = parseEnvironments({
+        environments: {
+          prod: { origin: alias, gcp_project_id: 'my-project' },
+        },
+      });
+      expect(environments.prod.origin).toBe('gcp');
+    },
+  );
+
+  it('all ORIGIN_ALIASES values are canonical origins', () => {
+    for (const target of Object.values(ORIGIN_ALIASES)) {
+      expect(CANONICAL_ORIGINS.has(target)).toBe(true);
+    }
   });
 
   it('local origin defaults dotenv_path to ".env"', () => {

@@ -346,7 +346,7 @@ describe('TestEnvironmentSelection', () => {
       );
 
       expect(() => new ConfigManager(configPath)).toThrow(
-        "Invalid secret_origin 'vault' for variable 'payment_token'. Must be 'local' or 'gcp'",
+        "Invalid secret_origin 'vault' for variable 'payment_token'. Must be 'local' or 'gcp' (or an alias)",
       );
     } finally {
       cleanupTempDir(repoRoot);
@@ -826,6 +826,75 @@ describe('TestSingletonWithEnvironments', () => {
           dotenvPath: '.env.override',
         }),
       ).resolves.not.toThrow();
+    } finally {
+      cleanupTempDir(repoRoot);
+    }
+  });
+});
+
+describe('OriginAliasesIntegration', () => {
+  it('variable with secret_origin alias "dotenv" routes to local loader', async () => {
+    const repoRoot = createTempDir();
+    try {
+      const configPath = writeRepoConfig(
+        repoRoot,
+        `
+        environments:
+          development:
+            origin: local
+            default: true
+        variables:
+          API_KEY:
+            source: API_KEY
+            type: str
+            required: true
+            secret_origin: dotenv
+        `,
+      );
+      writeEnv(repoRoot, 'API_KEY=alias-value\n');
+
+      const manager = new ConfigManager(configPath);
+      await manager.load();
+
+      // Alias 'dotenv' normalized to 'local' — variable loads from the .env file
+      expect(manager.get('API_KEY')).toBe('alias-value');
+    } finally {
+      cleanupTempDir(repoRoot);
+    }
+  });
+
+  it('variable with secret_origin alias "gcp-secretmanager" routes to gcp loader', async () => {
+    const repoRoot = createTempDir();
+    try {
+      const configPath = writeRepoConfig(
+        repoRoot,
+        `
+        environments:
+          production:
+            origin: gcp
+            gcp_project_id: prod-project
+            default: true
+        variables:
+          DB_PASSWORD:
+            source: DB_PASSWORD
+            type: str
+            required: true
+            secret_origin: gcp-secretmanager
+        `,
+      );
+      const fakeLoader = {
+        get: vi.fn().mockResolvedValue('secret-value'),
+        getMany: vi.fn().mockResolvedValue({ DB_PASSWORD: 'secret-value' }),
+      };
+      vi.spyOn(factory, 'createLoader').mockReturnValue(fakeLoader as never);
+
+      const manager = new ConfigManager(configPath);
+      await manager.load();
+
+      expect(factory.createLoader).toHaveBeenCalledWith(
+        expect.objectContaining({ secretOrigin: 'gcp', dotenvPath: null }),
+      );
+      expect(manager.get('DB_PASSWORD')).toBe('secret-value');
     } finally {
       cleanupTempDir(repoRoot);
     }
