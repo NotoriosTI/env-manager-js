@@ -202,6 +202,11 @@ export class DotEnvLoader implements SecretLoader {
   async get(key: string): Promise<string | null> {
     // process.env always wins (nullish — preserves empty string)
     if (process.env[key] !== undefined) {
+      // Warn only when the key also exists in the encrypted file, to avoid noise
+      // from keys that were never in the file.
+      if (this.parsedValues !== null && key in this.parsedValues) {
+        console.warn(`[env-manager] Key "${key}" is being overridden by process.env`);
+      }
       return process.env[key] as string;
     }
 
