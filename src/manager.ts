@@ -582,7 +582,9 @@ export class ConfigManager {
     if (coerced !== null && coerced !== undefined) {
       const value = String(coerced);
       this._writeProcessEnv(sourceKey, value);
-      console.log(`Loaded ${name}: ${this._debug ? value : maskSecret(value)}`);
+      const isProd = process.env.NODE_ENV === 'production';
+      const displayValue = (this._debug && !isProd) ? value : maskSecret(value);
+      console.log(`Loaded ${name}: ${displayValue}`);
     }
 
     return coerced;
