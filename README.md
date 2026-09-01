@@ -201,6 +201,7 @@ Named environments, selected at runtime via `APP_ENV`.
 | `dotenv_path` | `string` | no | Path to the `.env` file. Relative paths resolve from the project root (directory containing `package.json`). Defaults to `.env`. |
 | `default` | `boolean` | no | Use this environment when `APP_ENV` is not set. Only one environment may be the default. |
 | `encrypted_dotenv.enabled` | `boolean` | no | Enable encrypted dotenv support for this environment. See [Encrypted Dotenv Support](#encrypted-dotenv-support). |
+| `consolidated_secret` | `string` | no | Name of the app's single consolidated JSON secret in Secret Manager (`origin: gcp` only). See [Consolidated Secret](#consolidated-secret). |
 
 **Active environment selection order:**
 
@@ -417,9 +418,20 @@ YAML booleans and numbers in `default:` values are handled correctly — `defaul
 
 ## process.env Write-Back
 
-After `load()` completes, every non-null variable value is written back to `process.env` as a string (using its `source` key). This means any library that reads `process.env` directly (e.g., database clients, LangChain, etc.) will see the loaded values without any extra configuration.
+After `load()` completes, every non-null variable value is written back to
+`process.env` as a string. This means any library that reads `process.env`
+directly (e.g., database clients, LangChain, etc.) will see the loaded values
+without any extra configuration.
 
----
+The key used is **the variable's name**, not its `source`. A config that
+declares `PGHOST` with `source: JUAN_DB_HOST` exports `PGHOST`, which is what
+libpq and friends look for; `JUAN_DB_HOST` is just where the value is stored.
+
+> **Breaking in 0.3.0.** Earlier versions exported under the `source` key. If
+> your `source` differs from the variable name, the exported variable changed
+> name. For one release the old key is still written as a deprecated alias,
+> with a warning on stderr; it is removed in the next release. The Python
+> runtime has always exported under the variable name.
 
 ## Multi-Environment Example
 
@@ -557,14 +569,14 @@ try {
 
 ---
 
-## CLI: Encrypt .env Files
+### Encrypt .env files
 
-The `env-manager-encrypt` CLI encrypts a plaintext `.env` file in place, producing a dotenvx-compatible encrypted file and a colocated `.env.keys` file.
+The `env-manager encrypt` action encrypts a plaintext `.env` file in place, producing a dotenvx-compatible encrypted file and a colocated `.env.keys` file.
 
 ### Usage
 
 ```bash
-npx env-manager-encrypt <file> [--env <name>] [--force] [-o <outfile>]
+npx env-manager encrypt <file> [--env <name>] [--force] [-o <outfile>]
 ```
 
 | Argument | Description |
@@ -591,12 +603,12 @@ Values already prefixed with `encrypted:` are skipped.
 
 ```bash
 # 1. Encrypt .env for the development environment
-npx env-manager-encrypt .env --env development
+npx env-manager encrypt .env --env development
 
 # .env is now encrypted, .env.keys contains DOTENV_PRIVATE_KEY_DEVELOPMENT
 
 # Encrypt to a separate file, keeping the original .env intact
-npx env-manager-encrypt .env -o .env.encrypted --env development
+npx env-manager encrypt .env -o .env.encrypted --env development
 
 # 2. Configure config.yaml
 ```
@@ -622,14 +634,14 @@ node dist/app.js
 
 ---
 
-## CLI: Decrypt .env Files
+### Decrypt .env files
 
-The `env-manager-decrypt` CLI reverses `env-manager-encrypt`, restoring a dotenvx-compatible encrypted `.env` file to plaintext.
+The `env-manager decrypt` action reverses `env-manager encrypt`, restoring a dotenvx-compatible encrypted `.env` file to plaintext.
 
 ### Usage
 
 ```bash
-npx env-manager-decrypt <file> [--env <name>] [--key <hex>] [-o <outfile>]
+npx env-manager decrypt <file> [--env <name>] [--key <hex>] [-o <outfile>]
 ```
 
 | Argument | Description |
@@ -650,16 +662,16 @@ npx env-manager-decrypt <file> [--env <name>] [--key <hex>] [-o <outfile>]
 
 ```bash
 # Decrypt in place (reads private key from .env.keys automatically)
-npx env-manager-decrypt .env
+npx env-manager decrypt .env
 
 # Decrypt using an environment-specific key
-npx env-manager-decrypt .env --env development
+npx env-manager decrypt .env --env development
 
 # Decrypt to a separate file, keeping the encrypted file intact
-npx env-manager-decrypt .env -o .env.plain
+npx env-manager decrypt .env -o .env.plain
 
 # Decrypt using a key provided directly
-npx env-manager-decrypt .env --key <private-key-hex>
+npx env-manager decrypt .env --key <private-key-hex>
 ```
 
 ---
@@ -691,6 +703,83 @@ try {
 | `message` | `string` | Human-readable description of the issue. |
 | `sourceKey` | `string` | The source key looked up in the loader. |
 | `context` | `SourceContext` | Environment name, origin, GCP project, and dotenv path at load time. |
+
+---
+
+## Consolidated Secret
+
+Notorios apps keep every secret in **one** JSON secret per app, named
+`<app>-config`, instead of one GCP secret per variable:
+
+```yaml
+environments:
+  production:
+    origin: gcp
+    gcp_project_id: my-gcp-project
+    consolidated_secret: my-app-config
+```
+
+At boot the loader fetches that one secret, parses the JSON object and preloads
+every value into its cache — one Secret Manager call instead of one per key.
+Keys absent from the payload still fall back to individual secret lookups, so
+migrating is safe. A payload that is missing, is not JSON, or is not an object
+logs a warning and falls back; it never takes the app down.
+
+Resolution order: explicit `consolidatedSecret` option → `CONSOLIDATED_SECRET`
+env var → `CONSOLIDATED_SECRET` in `.env` → the active environment's
+`consolidated_secret` → none.
+
+Why one secret: Secret Manager bills per enabled version, so one secret with one
+live version is the cheapest shape, and reading once at boot keeps the call
+count flat no matter how many variables the app declares.
+
+---
+
+## CLI
+
+One binary, `env-manager`, with actions as subcommands:
+
+```bash
+npx env-manager encrypt <file> [--env NAME] [--force] [-o OUT] [--format text|json]
+npx env-manager decrypt <file> [--env NAME] [--key HEX] [-o OUT] [--format text|json]
+
+npx env-manager secrets list <secret> --project PROJECT [--format text|json]
+echo -n "value" | npx env-manager secrets set <secret> --key KEY --project PROJECT
+
+npx env-manager --version
+npx env-manager --help
+```
+
+`env-manager-encrypt` and `env-manager-decrypt` still work for one more
+release: they print a deprecation warning to stderr and delegate to the
+dispatcher. They are removed in the next release.
+
+Results go to stdout, diagnostics to stderr. Exit codes are stable per
+category:
+
+| code | meaning |
+|---|---|
+| 0 | success |
+| 1 | usage error (missing argument, unknown action, bad flag) |
+| 2 | operation error (file missing, already encrypted, decryption failed) |
+| 3 | missing optional dependency |
+| 4 | Secret Manager failure |
+
+### Rotating a key in the consolidated secret
+
+```bash
+echo -n "new-value" | \
+  npx env-manager secrets set my-app-config --key DB_PASSWORD --project my-gcp-project
+
+npx env-manager secrets list my-app-config --project my-gcp-project   # names only
+```
+
+`secrets set` reads the current JSON payload, merges the key, adds a new
+version, reads it back to verify, and only then destroys the previously enabled
+versions — Secret Manager bills per enabled version. Writing the same value
+twice creates no new version. The value comes from stdin, never from `argv`,
+where it would land in `ps` and in shell history. A secret that does not exist
+is an error: create it empty by hand first.
 
 ---
 

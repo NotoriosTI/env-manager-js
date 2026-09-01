@@ -1,6 +1,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as dotenv from 'dotenv';
+
+import { logger } from '../utils.js';
 import { decrypt } from 'eciesjs';
 
 import { DecryptionError } from '../errors.js';
@@ -85,8 +87,12 @@ function resolvePrivateKey(
       if (keysValues.DOTENV_PRIVATE_KEY != null) {
         return keysValues.DOTENV_PRIVATE_KEY;
       }
-    } catch {
-      // Silently ignore unreadable .env.keys
+    } catch (error: unknown) {
+      // §1.5.5: el archivo existe pero no se pudo leer. Eso no es "no hay
+      // llave", es un problema de permisos o de disco y tiene que ser audible.
+      logger.warn(
+        `[env-manager] Warning: .env.keys at ${keysFilePath} exists but could not be read: ${String(error)}`,
+      );
     }
   }
 

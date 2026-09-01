@@ -387,7 +387,7 @@ variables:
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Configuration manager already initialised'));
   });
 
-  it('re-init keeps the original singleton instance and loaded state', async () => {
+  it('re-init replaces the singleton, matching the Python runtime', async () => {
     const firstTmpDir = createTempDir();
     const firstConfigPath = writeConfig(
       firstTmpDir,
@@ -421,10 +421,16 @@ variables:
     const firstManager = await initConfig(firstConfigPath, { dotenvPath: firstDotenvPath });
     const secondManager = await initConfig(secondConfigPath, { dotenvPath: secondDotenvPath });
 
-    expect(secondManager).toBe(firstManager);
+    // Paridad con Python: el segundo initConfig REEMPLAZA la instancia (D1).
+    expect(secondManager).not.toBe(firstManager);
+
+    // Pero el valor sigue siendo el primero: la primera carga exportó
+    // DB_PASSWORD a process.env y process.env gana sobre el archivo. Python
+    // hace exactamente lo mismo con os.environ — verificado contra el runtime
+    // Python, no asumido. Las claves nuevas del segundo config sí se cargan.
     expect(getConfig('DB_PASSWORD')).toBe('first-secret');
     expect(requireConfig('DB_PASSWORD')).toBe('first-secret');
-    expect(process.env.SECOND_ONLY).toBeUndefined();
+    expect(getConfig('SECOND_ONLY')).toBe('leaked-value');
     expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Configuration manager already initialised'));
   });
 
@@ -467,7 +473,8 @@ variables:
 `,
     );
     const dotenvPath = writeEnv(tmpDir, 'DB_PASSWORD=secret123\n');
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    // §1.7: el diagnóstico va a stderr; stdout queda para los resultados.
+    const logSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const manager = new ConfigManager(configPath, { dotenvPath, debug: true });
     await manager.load();
@@ -489,7 +496,8 @@ variables:
     );
     const rawValue = 'secret-value-1234';
     const dotenvPath = writeEnv(tmpDir, `DB_PASSWORD=${rawValue}\n`);
-    const logSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    // §1.7: el diagnóstico va a stderr; stdout queda para los resultados.
+    const logSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const manager = new ConfigManager(configPath, { dotenvPath });
     await manager.load();
@@ -570,5 +578,94 @@ variables:
     // Now explicitly load
     await manager.load();
     expect(manager.get('DB_PASSWORD')).toBe('secret123');
+  });
+});
+
+describe('D11: clave con la que se exporta a process.env', () => {
+  // Python exporta con el NOMBRE de la variable. JS exportaba con su `source`,
+  // así que un config con `PGHOST` / `source: JUAN_DB_HOST` dejaba `PGHOST` sin
+  // definir y libpq nunca lo veía. Ahora exporta el nombre, y mantiene el
+  // `source` como alias deprecado por una versión.
+  it('exporta con el nombre de la variable', async () => {
+    const tmpDir = createTempDir();
+    const configPath = writeConfig(
+      tmpDir,
+      `
+variables:
+  PGHOST:
+    source: JUAN_DB_HOST
+    type: str
+`,
+    );
+    const dotenvPath = writeEnv(tmpDir, 'JUAN_DB_HOST=db.internal\n');
+    vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const manager = new ConfigManager(configPath, { dotenvPath });
+    await manager.load();
+
+    expect(process.env.PGHOST).toBe('db.internal');
+    delete process.env.PGHOST;
+    delete process.env.JUAN_DB_HOST;
+  });
+
+  it('mantiene el source como alias transitorio y avisa una sola vez', async () => {
+    const tmpDir = createTempDir();
+    const configPath = writeConfig(
+      tmpDir,
+      `
+variables:
+  PGHOST:
+    source: JUAN_DB_HOST
+    type: str
+  PGPORT:
+    source: JUAN_DB_PORT
+    type: int
+`,
+    );
+    const dotenvPath = writeEnv(tmpDir, 'JUAN_DB_HOST=db.internal\nJUAN_DB_PORT=5432\n');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const manager = new ConfigManager(configPath, { dotenvPath });
+    await manager.load();
+
+    expect(process.env.JUAN_DB_HOST).toBe('db.internal');
+    expect(process.env.JUAN_DB_PORT).toBe('5432');
+
+    const aliasWarnings = warnSpy.mock.calls
+      .map((call) => String(call[0]))
+      .filter((message) => message.includes('is also exported to process.env'));
+    expect(aliasWarnings).toHaveLength(2);
+    expect(aliasWarnings[0]).toContain('removed in the next release');
+
+    for (const key of ['PGHOST', 'PGPORT', 'JUAN_DB_HOST', 'JUAN_DB_PORT']) {
+      delete process.env[key];
+    }
+  });
+
+  it('no duplica ni avisa cuando el nombre y el source coinciden', async () => {
+    const tmpDir = createTempDir();
+    const configPath = writeConfig(
+      tmpDir,
+      `
+variables:
+  DB_PASSWORD:
+    source: DB_PASSWORD
+    type: str
+`,
+    );
+    const dotenvPath = writeEnv(tmpDir, 'DB_PASSWORD=secret123\n');
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+
+    const manager = new ConfigManager(configPath, { dotenvPath });
+    await manager.load();
+
+    expect(process.env.DB_PASSWORD).toBe('secret123');
+    expect(
+      warnSpy.mock.calls.filter((call) =>
+        String(call[0]).includes('is also exported to process.env'),
+      ),
+    ).toHaveLength(0);
+
+    delete process.env.DB_PASSWORD;
   });
 });

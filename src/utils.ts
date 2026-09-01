@@ -4,6 +4,23 @@ import { parse } from 'yaml';
 
 import type { VariableType } from './types.js';
 
+/**
+ * Diagnóstico de la librería.
+ *
+ * Blueprint §1.7: los resultados van a stdout y todo lo demás a stderr. Una
+ * librería que escribe en stdout rompe a cualquier consumidor que parsee la
+ * salida de su propio proceso. Paridad con el logger de Python, que no tiene
+ * handler y por lo tanto tampoco toca stdout.
+ */
+export const logger = {
+  info(message: string): void {
+    console.error(message);
+  },
+  warn(message: string): void {
+    console.warn(message);
+  },
+};
+
 export function coerceType(
   value: unknown,
   type: VariableType,
