@@ -4,15 +4,19 @@ import { GCPSecretLoader } from './loaders/gcp.js';
 import { ORIGIN_ALIASES } from './environment.js';
 
 export interface LoaderFactoryContext
-  extends Pick<SourceContext, 'secretOrigin' | 'gcpProjectId' | 'dotenvPath'> {}
+  extends Pick<
+    SourceContext,
+    'secretOrigin' | 'gcpProjectId' | 'dotenvPath' | 'consolidatedSecret'
+  > {}
 
 const loaderCache = new Map<string, SecretLoader>();
 
 export function createLoader(context: LoaderFactoryContext): SecretLoader {
-  const { secretOrigin, gcpProjectId, dotenvPath } = context;
+  const { secretOrigin, gcpProjectId, dotenvPath, consolidatedSecret } = context;
   const rawOrigin = (secretOrigin ?? '').toLowerCase();
   const normalizedOrigin = ORIGIN_ALIASES[rawOrigin] ?? rawOrigin;
-  const cacheKey = `${normalizedOrigin}:${gcpProjectId ?? ''}:${dotenvPath ?? ''}`;
+  const cacheKey =
+    `${normalizedOrigin}:${gcpProjectId ?? ''}:${dotenvPath ?? ''}:${consolidatedSecret ?? ''}`;
 
   if (loaderCache.has(cacheKey)) {
     return loaderCache.get(cacheKey) as SecretLoader;
@@ -26,7 +30,7 @@ export function createLoader(context: LoaderFactoryContext): SecretLoader {
     if (!gcpProjectId) {
       throw new Error('createLoader: gcpProjectId is required for gcp origin');
     }
-    loader = new GCPSecretLoader(gcpProjectId);
+    loader = new GCPSecretLoader(gcpProjectId, { consolidatedSecret });
   } else {
     throw new Error(`createLoader: unsupported origin '${secretOrigin}'`);
   }

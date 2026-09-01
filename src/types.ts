@@ -42,6 +42,11 @@ export interface EnvironmentConfig {
   isDefault: boolean;
   /** Optional encrypted dotenv configuration for this environment. */
   encryptedDotenv?: EncryptedDotenvConfig;
+  /**
+   * Nombre del secreto JSON consolidado de la app en GSM (blueprint §1.1).
+   * Solo aplica a entornos con origin 'gcp'.
+   */
+  consolidatedSecret?: string | null;
 }
 
 export interface VariableDefinition {
@@ -67,6 +72,7 @@ export interface SourceContext {
   secretOrigin: SecretOrigin;
   gcpProjectId: string | null;
   dotenvPath: string | null;
+  consolidatedSecret?: string | null;
 }
 
 export type ConfigValidationIssueType = 'missing' | 'invalid';
@@ -95,4 +101,6 @@ export interface ConfigManagerOptions {
   dotenvPath?: string | null;
   strict?: boolean;
   debug?: boolean;
+  /** Secreto JSON consolidado de la app en GSM (blueprint §1.1). */
+  consolidatedSecret?: string | null;
 }

@@ -17,7 +17,7 @@ import { CANONICAL_ORIGINS, ORIGIN_ALIASES, parseEnvironments } from './environm
 import { NotImplementedError } from './errors.js';
 import { _resetLoaderCache, createLoader } from './factory.js';
 import { DotEnvLoader } from './loaders/dotenv.js';
-import { coerceType, loadYaml, maskSecret } from './utils.js';
+import { coerceType, loadYaml, logger, maskSecret } from './utils.js';
 
 let singleton: ConfigManager | null = null;
 
@@ -28,10 +28,22 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+/**
+ * Raíz del proyecto: sube desde el directorio del config buscando el marcador
+ * del lenguaje (`package.json`), sin cruzar el límite del repositorio.
+ *
+ * Paridad con Python (`_discover_project_root`): si aparece un `.git` antes que
+ * el marcador, ese es el techo — no se sigue subiendo hacia el home del usuario,
+ * donde un `package.json` ajeno haría que `dotenv_path` resolviera fuera del
+ * repo. Si no hay ninguno de los dos, la raíz es el directorio del config.
+ */
 function discoverProjectRoot(startDir: string): string {
   let dir = startDir;
   while (true) {
     if (existsSync(join(dir, 'package.json'))) {
+      return dir;
+    }
+    if (existsSync(join(dir, '.git'))) {
       return dir;
     }
     const parent = dirname(dir);
@@ -125,12 +137,15 @@ export class ConfigManager {
   private readonly _dotenvPath: string | null;
   private readonly _secretOrigin: SecretOrigin;
   private readonly _gcpProjectId: string | null;
+  private readonly _consolidatedSecret: string | null;
   private readonly _strict: boolean;
   private readonly _debug: boolean;
   private readonly _hasEnvironments: boolean;
   private readonly _dotenvValues: Record<string, string>;
   /** Whether old-format top-level encrypted_dotenv support is enabled. */
   private readonly _encryptedDotenvEnabled: boolean;
+  /** `source` ya avisados como alias deprecado, para no repetir el warning. */
+  private readonly _aliasWarned = new Set<string>();
   private _values: Record<string, unknown> = {};
   private _loaded = false;
   private _loadingPromise: Promise<void> | null = null;
@@ -282,8 +297,12 @@ export class ConfigManager {
     if (this._dotenvPath != null && existsSync(this._dotenvPath)) {
       try {
         this._dotenvValues = dotenv.parse(readFileSync(this._dotenvPath));
-      } catch {
-        // Silently ignore unreadable dotenv
+      } catch (error: unknown) {
+        // §1.5.5: existsSync dijo que el archivo está. Que no se pueda leer es
+        // permisos o disco, no ausencia, y tiene que ser audible.
+        logger.warn(
+          `Dotenv file ${this._dotenvPath} exists but could not be read: ${String(error)}`,
+        );
       }
     }
 
@@ -314,6 +333,20 @@ export class ConfigManager {
       this._gcpProjectId = this.activeEnvironment.gcpProjectId;
     } else {
       this._gcpProjectId = null;
+    }
+
+    // Resolve consolidated secret (§1.1). Mismo orden que gcpProjectId:
+    // 1. parámetro explícito  2. CONSOLIDATED_SECRET del proceso
+    // 3. valor del .env       4. config del entorno activo  5. null
+    const consolidatedCandidate =
+      options?.consolidatedSecret ??
+      process.env.CONSOLIDATED_SECRET ??
+      this._dotenvValues['CONSOLIDATED_SECRET'] ??
+      null;
+    if (consolidatedCandidate != null && String(consolidatedCandidate).trim() !== '') {
+      this._consolidatedSecret = String(consolidatedCandidate).trim();
+    } else {
+      this._consolidatedSecret = this.activeEnvironment?.consolidatedSecret ?? null;
     }
 
     // Resolve strict mode (constructor param always wins, then YAML, then false)
@@ -347,6 +380,7 @@ export class ConfigManager {
       secretOrigin: this._secretOrigin,
       gcpProjectId: this._gcpProjectId,
       dotenvPath: this._dotenvPath,
+      consolidatedSecret: this._consolidatedSecret,
     };
   }
 
@@ -368,6 +402,9 @@ export class ConfigManager {
         secretOrigin: pinnedEnv.origin,
         gcpProjectId: pinnedEnv.gcpProjectId,
         dotenvPath: pinnedDotenvPath,
+        // El secreto consolidado pertenece al entorno al que la variable
+        // apunta, no al activo.
+        consolidatedSecret: pinnedEnv.consolidatedSecret ?? null,
       };
     }
 
@@ -581,8 +618,29 @@ export class ConfigManager {
 
     if (coerced !== null && coerced !== undefined) {
       const value = String(coerced);
-      this._writeProcessEnv(sourceKey, value);
-      console.log(`Loaded ${name}: ${this._debug ? value : maskSecret(value)}`);
+      // Se exporta con el NOMBRE de la variable, igual que Python
+      // (`os.environ[var_name]`, manager.py:503). El nombre es el contrato con
+      // el mundo exterior: un config que declara `PGHOST` con
+      // `source: JUAN_DB_HOST` quiere que libpq encuentre `PGHOST`. Antes JS
+      // exportaba bajo el `source` y esa variable nunca aparecía. Ver D11 en
+      // PARITY.md.
+      this._writeProcessEnv(name, value);
+
+      // Alias transitorio: se sigue exportando también bajo el `source` durante
+      // una versión, para no romper a quien dependa de la conducta vieja. Se
+      // elimina en la release siguiente.
+      if (sourceKey !== name) {
+        this._writeProcessEnv(sourceKey, value);
+        if (!this._aliasWarned.has(sourceKey)) {
+          this._aliasWarned.add(sourceKey);
+          logger.warn(
+            `Deprecated: '${name}' is also exported to process.env as '${sourceKey}' ` +
+              'because its `source` differs from its name. This alias is removed in the ' +
+              `next release — read '${name}' instead.`,
+          );
+        }
+      }
+      logger.info(`Loaded ${name}: ${this._debug ? value : maskSecret(value)}`);
     }
 
     return coerced;
@@ -652,7 +710,7 @@ export class ConfigManager {
 
     // Fetch each group
     for (const [, groupInfos] of groups) {
-      const { secretOrigin, gcpProjectId, dotenvPath } = groupInfos[0].ctx;
+      const { secretOrigin, gcpProjectId, dotenvPath, consolidatedSecret } = groupInfos[0].ctx;
 
       // Pre-flight: separate vars that can be resolved from process.env
       const fromProcessEnv = new Map<string, string>();
@@ -761,7 +819,14 @@ export class ConfigManager {
               for (const info of needFile) {
                 fileResults[info.sourceKey] = parsed[info.sourceKey] ?? null;
               }
-            } catch {
+            } catch (error: unknown) {
+              // §1.5.5: no se silencia. Se dice qué archivo falló antes de
+              // degradar a null, si no un disco malo se ve igual que un .env
+              // sin la clave.
+              logger.warn(
+                `Dotenv file ${dotenvPath} exists but could not be parsed: ${String(error)}. ` +
+                  `Treating ${needFile.length} variable(s) as unset.`,
+              );
               for (const info of needFile) {
                 fileResults[info.sourceKey] = null;
               }
@@ -786,7 +851,7 @@ export class ConfigManager {
           return fileResults;
         }
 
-        const loader = createLoader({ secretOrigin, gcpProjectId, dotenvPath });
+        const loader = createLoader({ secretOrigin, gcpProjectId, dotenvPath, consolidatedSecret });
         return loader.getMany(needFile.map((i) => i.sourceKey));
       };
 
@@ -812,7 +877,7 @@ export class ConfigManager {
     }
 
     const ctx = this._defaultSourceContext();
-    const { secretOrigin, gcpProjectId, dotenvPath } = ctx;
+    const { secretOrigin, gcpProjectId, dotenvPath, consolidatedSecret } = ctx;
 
     // Classify vars
     const sourcedVars: OldFormatInfo[] = [];
@@ -898,7 +963,7 @@ export class ConfigManager {
         const loader = new DotEnvLoader(dotenvPath, { encrypted: true });
         loaderResults = await loader.getMany(loaderSourceKeys);
       } else {
-        const loader = createLoader({ secretOrigin, gcpProjectId, dotenvPath });
+        const loader = createLoader({ secretOrigin, gcpProjectId, dotenvPath, consolidatedSecret });
         loaderResults = await loader.getMany(loaderSourceKeys);
       }
     }
@@ -908,6 +973,31 @@ export class ConfigManager {
     if (issues.length > 0) {
       throw new ConfigValidationError(issues);
     }
+  }
+
+  /**
+   * Valor obligatorio. Paridad con `ConfigManager.require` de Python.
+   */
+  require(name: string): unknown {
+    const value = this.get(name);
+    if (value === null || value === undefined) {
+      throw new Error(
+        `Required configuration '${name}' is missing. Call initConfig or set a default.`,
+      );
+    }
+    return value;
+  }
+
+  /**
+   * Copia de los valores cargados. Paridad con la propiedad `values` de Python.
+   */
+  get values(): Record<string, unknown> {
+    if (!this._loaded) {
+      throw new Error(
+        `ConfigManager not loaded. Call \`await initConfig()\` before reading values.`,
+      );
+    }
+    return { ...this._values };
   }
 
   get(name: string): unknown | null {
@@ -960,7 +1050,7 @@ export class ConfigManager {
             throw new Error(`Required variable '${name}' is not set`);
           }
           if (def?.required === false) {
-            console.warn(`Optional variable '${name}' is not set`);
+            logger.warn(`Optional variable '${name}' is not set`);
           }
         }
         return null;
@@ -996,7 +1086,7 @@ export class ConfigManager {
             throw new Error(`Required variable '${name}' is not set`);
           }
           if (def.required === false) {
-            console.warn(`Optional variable '${name}' is not set`);
+            logger.warn(`Optional variable '${name}' is not set`);
           }
           return null;
         }
@@ -1021,7 +1111,7 @@ export class ConfigManager {
             throw new Error(`Required variable '${name}' is not set`);
           }
           if (def.required === false) {
-            console.warn(`Optional variable '${name}' is not set`);
+            logger.warn(`Optional variable '${name}' is not set`);
           }
           return null;
         }
@@ -1061,7 +1151,7 @@ export class ConfigManager {
         );
       }
       if (def.required === false) {
-        console.warn(
+        logger.warn(
           `Optional variable '${name}' resolved to None because source '${sourceKey}' was unavailable in ${ctxLabel}.`,
         );
       }
@@ -1085,7 +1175,7 @@ export class ConfigManager {
     }
     if (def.required === true) {
       if (def.default !== undefined) {
-        console.warn(
+        logger.warn(
           `Required variable '${name}' missing from source; using YAML default for source '${sourceKey}' in ${ctxLabel}.`,
         );
         return def.default as unknown;
@@ -1095,7 +1185,7 @@ export class ConfigManager {
       );
     }
     if (def.required === false) {
-      console.warn(
+      logger.warn(
         `Optional variable '${name}' resolved to None because source '${sourceKey}' was unavailable in ${ctxLabel}.`,
       );
     }
@@ -1109,22 +1199,29 @@ export async function initConfig(
   options?: ConfigManagerOptions,
 ): Promise<ConfigManager> {
   if (singleton !== null) {
-    console.warn('Configuration manager already initialised. Call _resetSingleton() to reset.');
-    return singleton;
+    // Paridad con Python (`init_config`): re-inicializar REEMPLAZA la instancia.
+    // Devolver la vieja hacía que un segundo initConfig con otro config fuera
+    // un no-op silencioso.
+    logger.warn('Configuration manager already initialised. Replacing existing instance.');
   }
   singleton = new ConfigManager(configPath, options);
   await singleton.load();
   return singleton;
 }
 
-export function getConfig(name?: string): unknown | null | ConfigManager {
+export function getConfig(name?: string, defaultValue: unknown = null): unknown | ConfigManager {
   if (singleton === null) {
-    return null;
+    // Paridad con Python: no inicializado es un error, no un `null` que el
+    // consumidor confunde con "la variable no existe".
+    throw new Error('Configuration manager not initialised. Call initConfig().');
   }
   if (name === undefined) {
+    // Extensión propia de JS, sin equivalente en Python: sin nombre devuelve el
+    // manager. Declarada en PARITY.md.
     return singleton;
   }
-  return singleton.get(name);
+  const value = singleton.get(name);
+  return value === null || value === undefined ? defaultValue : value;
 }
 
 export function requireConfig(name?: string): unknown | ConfigManager {

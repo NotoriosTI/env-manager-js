@@ -119,6 +119,18 @@ export function parseEnvironments(
       throw new Error(`Missing 'gcp_project_id' for GCP environment '${name}'`);
     }
 
+    // Secreto JSON consolidado (§1.1): un solo acceso a GSM al boot.
+    let consolidatedSecret: string | null = null;
+    const rawConsolidated = rawEnvironment.consolidated_secret;
+    if (rawConsolidated !== undefined && rawConsolidated !== null) {
+      if (typeof rawConsolidated !== 'string' || rawConsolidated.trim().length === 0) {
+        throw new Error(
+          `Environment '${name}': 'consolidated_secret' must be a non-empty string when provided`,
+        );
+      }
+      consolidatedSecret = rawConsolidated.trim();
+    }
+
     environments[name] = {
       name,
       origin,
@@ -126,6 +138,7 @@ export function parseEnvironments(
       gcpProjectId: rawEnvironment.gcp_project_id,
       isDefault,
       encryptedDotenv,
+      consolidatedSecret,
     };
   }
 

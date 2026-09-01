@@ -10,14 +10,12 @@ export default defineConfig([
     sourcemap: true,
   },
   {
-    entry: ['src/cli/encrypt.ts'],
-    format: ['esm'],
-    target: 'es2022',
-    banner: { js: '#!/usr/bin/env node' },
-    clean: false,
-  },
-  {
-    entry: ['src/cli/decrypt.ts'],
+    // Binario único §1.7 más los dos alias deprecados.
+    entry: [
+      'src/cli/main.ts',
+      'src/cli/legacy-encrypt.ts',
+      'src/cli/legacy-decrypt.ts',
+    ],
     format: ['esm'],
     target: 'es2022',
     banner: { js: '#!/usr/bin/env node' },
