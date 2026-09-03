@@ -3,6 +3,13 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 Este proyecto sigue versionado semántico.
 
+## [0.3.2] — 2026-09-03
+
+### Notas
+
+- Reempaquetado de `0.3.1` con el mismo código después de que su publicación
+  en npm se interrumpiera antes de quedar disponible en el registro.
+
 ## [0.3.1] — 2026-09-03
 
 ### Añadido
