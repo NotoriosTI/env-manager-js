@@ -138,6 +138,8 @@ export class ConfigManager {
   private readonly _secretOrigin: SecretOrigin;
   private readonly _gcpProjectId: string | null;
   private readonly _consolidatedSecret: string | null;
+  private readonly _fallbackToIndividualOverride: boolean | undefined;
+  private readonly _fallbackToIndividual: boolean;
   private readonly _strict: boolean;
   private readonly _debug: boolean;
   private readonly _hasEnvironments: boolean;
@@ -349,6 +351,21 @@ export class ConfigManager {
       this._consolidatedSecret = this.activeEnvironment?.consolidatedSecret ?? null;
     }
 
+    if (
+      options?.fallbackToIndividual !== undefined &&
+      typeof options.fallbackToIndividual !== 'boolean'
+    ) {
+      throw new Error('ConfigManager: fallbackToIndividual must be a boolean');
+    }
+    this._fallbackToIndividualOverride = options?.fallbackToIndividual;
+    this._fallbackToIndividual =
+      this._fallbackToIndividualOverride ?? this.activeEnvironment?.fallbackToIndividual ?? true;
+    if (!this._fallbackToIndividual && this._consolidatedSecret === null) {
+      throw new Error(
+        "ConfigManager: fallbackToIndividual cannot be false without consolidatedSecret",
+      );
+    }
+
     // Resolve strict mode (constructor param always wins, then YAML, then false)
     if (options?.strict !== undefined) {
       this._strict = options.strict;
@@ -381,6 +398,7 @@ export class ConfigManager {
       gcpProjectId: this._gcpProjectId,
       dotenvPath: this._dotenvPath,
       consolidatedSecret: this._consolidatedSecret,
+      fallbackToIndividual: this._fallbackToIndividual,
     };
   }
 
@@ -405,6 +423,8 @@ export class ConfigManager {
         // El secreto consolidado pertenece al entorno al que la variable
         // apunta, no al activo.
         consolidatedSecret: pinnedEnv.consolidatedSecret ?? null,
+        fallbackToIndividual:
+          this._fallbackToIndividualOverride ?? pinnedEnv.fallbackToIndividual ?? true,
       };
     }
 
@@ -700,8 +720,16 @@ export class ConfigManager {
     // Group sourced variables by loader context key
     const groups = new Map<string, SourcingInfo[]>();
     for (const info of sourcedVars) {
-      const { secretOrigin, gcpProjectId, dotenvPath } = info.ctx;
-      const key = `${secretOrigin}:${gcpProjectId ?? ''}:${dotenvPath ?? ''}`;
+      const {
+        secretOrigin,
+        gcpProjectId,
+        dotenvPath,
+        consolidatedSecret,
+        fallbackToIndividual,
+      } = info.ctx;
+      const key =
+        `${secretOrigin}:${gcpProjectId ?? ''}:${dotenvPath ?? ''}:` +
+        `${consolidatedSecret ?? ''}:${String(fallbackToIndividual)}`;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(info);
     }
@@ -710,7 +738,13 @@ export class ConfigManager {
 
     // Fetch each group
     for (const [, groupInfos] of groups) {
-      const { secretOrigin, gcpProjectId, dotenvPath, consolidatedSecret } = groupInfos[0].ctx;
+      const {
+        secretOrigin,
+        gcpProjectId,
+        dotenvPath,
+        consolidatedSecret,
+        fallbackToIndividual,
+      } = groupInfos[0].ctx;
 
       // Pre-flight: separate vars that can be resolved from process.env
       const fromProcessEnv = new Map<string, string>();
@@ -851,7 +885,13 @@ export class ConfigManager {
           return fileResults;
         }
 
-        const loader = createLoader({ secretOrigin, gcpProjectId, dotenvPath, consolidatedSecret });
+        const loader = createLoader({
+          secretOrigin,
+          gcpProjectId,
+          dotenvPath,
+          consolidatedSecret,
+          fallbackToIndividual,
+        });
         return loader.getMany(needFile.map((i) => i.sourceKey));
       };
 
@@ -877,7 +917,13 @@ export class ConfigManager {
     }
 
     const ctx = this._defaultSourceContext();
-    const { secretOrigin, gcpProjectId, dotenvPath, consolidatedSecret } = ctx;
+    const {
+      secretOrigin,
+      gcpProjectId,
+      dotenvPath,
+      consolidatedSecret,
+      fallbackToIndividual,
+    } = ctx;
 
     // Classify vars
     const sourcedVars: OldFormatInfo[] = [];
@@ -963,7 +1009,13 @@ export class ConfigManager {
         const loader = new DotEnvLoader(dotenvPath, { encrypted: true });
         loaderResults = await loader.getMany(loaderSourceKeys);
       } else {
-        const loader = createLoader({ secretOrigin, gcpProjectId, dotenvPath, consolidatedSecret });
+        const loader = createLoader({
+          secretOrigin,
+          gcpProjectId,
+          dotenvPath,
+          consolidatedSecret,
+          fallbackToIndividual,
+        });
         loaderResults = await loader.getMany(loaderSourceKeys);
       }
     }

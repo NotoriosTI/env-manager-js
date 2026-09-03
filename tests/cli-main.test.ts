@@ -45,6 +45,7 @@ describe('exit codes', () => {
     const result = runCli(['--help']);
     expect(result.code).toBe(exitCodes.OK);
     expect(result.stdout).toContain('env-manager');
+    expect(result.stdout).toContain('--allow-empty');
   });
 
   it('sin acción es error de uso', () => {
@@ -71,6 +72,33 @@ describe('exit codes', () => {
     [['secrets', 'list', 'app-config']],
   ])('invocación incompleta de secrets (%j) es error de uso', (args) => {
     expect(runCli(args as string[]).code).toBe(exitCodes.USAGE);
+  });
+
+  it.each([
+    ['encrypt', 'config.env', '--allow-empty'],
+    ['decrypt', 'config.env', '--allow-empty'],
+    ['secrets', 'list', 'app-config', '--project', 'project', '--allow-empty'],
+  ])('rechaza --allow-empty fuera de secrets set (%j)', (...args) => {
+    const result = runCli(args);
+
+    expect(result.code).toBe(exitCodes.USAGE);
+    expect(result.stderr).toContain("--allow-empty is only valid for 'secrets set'");
+    expect(result.stdout).toBe('');
+  });
+
+  it('acepta --allow-empty en secrets set y continúa con la validación normal', () => {
+    const result = runCli([
+      'secrets',
+      'set',
+      'app-config',
+      '--key',
+      'K',
+      '--allow-empty',
+    ]);
+
+    expect(result.code).toBe(exitCodes.USAGE);
+    expect(result.stderr).toContain('--project is required');
+    expect(result.stderr).not.toContain("only valid for 'secrets set'");
   });
 });
 

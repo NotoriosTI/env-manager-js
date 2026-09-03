@@ -103,7 +103,19 @@ export function parseEnvironments(
       encryptedDotenv = { enabled: true, ...(privateKey != null ? { privateKey } : {}) };
     }
 
+    const rawFallback = rawEnvironment.fallback_to_individual;
+    if (rawFallback !== undefined && typeof rawFallback !== 'boolean') {
+      throw new Error(
+        `Environment '${name}': 'fallback_to_individual' must be a boolean when provided`,
+      );
+    }
+
     if (origin === 'local') {
+      if (rawFallback === false) {
+        throw new Error(
+          `Environment '${name}': 'fallback_to_individual' cannot be false without 'consolidated_secret'`,
+        );
+      }
       environments[name] = {
         name,
         origin,
@@ -111,6 +123,7 @@ export function parseEnvironments(
         gcpProjectId: null,
         isDefault,
         encryptedDotenv,
+        fallbackToIndividual: true,
       };
       continue;
     }
@@ -131,6 +144,13 @@ export function parseEnvironments(
       consolidatedSecret = rawConsolidated.trim();
     }
 
+    const fallbackToIndividual = rawFallback ?? true;
+    if (!fallbackToIndividual && consolidatedSecret === null) {
+      throw new Error(
+        `Environment '${name}': 'fallback_to_individual' cannot be false without 'consolidated_secret'`,
+      );
+    }
+
     environments[name] = {
       name,
       origin,
@@ -139,6 +159,7 @@ export function parseEnvironments(
       isDefault,
       encryptedDotenv,
       consolidatedSecret,
+      fallbackToIndividual,
     };
   }
 

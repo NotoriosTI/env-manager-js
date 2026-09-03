@@ -3,18 +3,19 @@
  *
  * Regla del blueprint: cada app tiene **un** secreto JSON consolidado en Google
  * Secret Manager y el guardado de una actualización no puede dejar versiones
- * viejas activas — se paga por versión habilitada. Este módulo es la única
+ * viejas facturables (`ENABLED` o `DISABLED`). Este módulo es la única
  * pieza que escribe en GSM, y lo hace en un orden que nunca deja la app sin
  * secreto legible:
  *
- * 1. leer el JSON de la versión `latest`;
- * 2. mezclar la clave nueva;
- * 3. si el contenido no cambió, no se crea versión (idempotente);
- * 4. agregar la versión nueva;
- * 5. **verificar** que la versión nueva se lee y trae la clave;
- * 6. recién entonces destruir las demás versiones habilitadas.
+ * 1. inventariar las versiones facturables actuales;
+ * 2. leer el JSON de la versión `latest` (o `{}` si aún no hay versiones);
+ * 3. mezclar la clave nueva;
+ * 4. si el contenido no cambió, no se crea versión (idempotente);
+ * 5. agregar la versión nueva;
+ * 6. **verificar** que la versión nueva se lee y trae la clave;
+ * 7. recién entonces destruir el snapshot de versiones facturables.
  *
- * Si el paso 6 falla, el comando lo dice con el número de versión que quedó
+ * Si el paso 7 falla, el comando lo dice con el número de versión que quedó
  * colgando y sale con código de error. Nada de `.catch(() => null)`.
  *
  * El valor nunca entra por argumento: se lee de stdin. Un valor en `argv` queda
@@ -86,6 +87,7 @@ async function readLatest(
   client: SecretsClient,
   projectId: string,
   secretName: string,
+  resourceExists = false,
 ): Promise<Record<string, unknown>> {
   const name = `${secretPath(projectId, secretName)}/versions/latest`;
 
@@ -95,6 +97,12 @@ async function readLatest(
   } catch (error: unknown) {
     const code = grpcCode(error);
     if (code === 5) {
+      if (resourceExists) {
+        throw new SecretsError(
+          `Secret '${secretName}' exists in project '${projectId}', but its latest ` +
+            'version could not be read. Refusing to write a new version.',
+        );
+      }
       throw new SecretsError(
         `Secret '${secretName}' does not exist in project '${projectId}'. ` +
           'Create it empty first; env-manager does not create secrets.',
@@ -134,16 +142,45 @@ async function readLatest(
   return data as Record<string, unknown>;
 }
 
-async function enabledVersions(
+function isBillableState(state: VersionInfo['state']): boolean {
+  return state === 'ENABLED' || state === 'DISABLED' || state === 1 || state === 2;
+}
+
+interface VersionSnapshot {
+  billable: string[];
+  total: number;
+}
+
+async function snapshotVersions(
   client: SecretsClient,
   projectId: string,
   secretName: string,
-): Promise<string[]> {
+): Promise<VersionSnapshot> {
   const parent = secretPath(projectId, secretName);
-  const [versions] = await client.listSecretVersions({ parent });
-  return versions
-    .filter((version) => String(version.state) === 'ENABLED')
-    .map((version) => version.name);
+  try {
+    const [versions] = await client.listSecretVersions({ parent });
+    return {
+      billable: versions
+        .filter((version) => isBillableState(version.state))
+        .map((version) => version.name),
+      total: versions.length,
+    };
+  } catch (error: unknown) {
+    const code = grpcCode(error);
+    if (code === 5) {
+      throw new SecretsError(
+        `Secret '${secretName}' does not exist in project '${projectId}'. ` +
+          'Create the secret resource first; env-manager does not create secrets.',
+      );
+    }
+    if (code === 7) {
+      throw new SecretsError(
+        `Permission denied listing versions for '${secretName}' in project '${projectId}'. ` +
+          'Retrying will not help; check IAM.',
+      );
+    }
+    throw error;
+  }
 }
 
 /** Nombres de las claves del secreto consolidado. Nunca los valores. */
@@ -157,7 +194,8 @@ export async function listKeys(
 }
 
 /**
- * Escribe `key` en el secreto consolidado y destruye la versión anterior.
+ * Escribe `key` en el secreto consolidado y destruye las versiones facturables
+ * que existían al comenzar la operación.
  *
  * Cuando el valor ya estaba, no crea versión y lo informa.
  */
@@ -175,7 +213,13 @@ export async function setKey(
   const c = client ?? (await defaultClient());
   const parent = secretPath(projectId, secretName);
 
-  const current = await readLatest(c, projectId, secretName);
+  // Snapshot first: cleanup must never destroy a version created by another
+  // writer after this operation began.
+  const snapshot = await snapshotVersions(c, projectId, secretName);
+  const current =
+    snapshot.total === 0
+      ? {}
+      : await readLatest(c, projectId, secretName, true);
 
   if (current[key] === value) {
     // §1.5: no se paga una versión nueva por escribir lo mismo.
@@ -188,11 +232,14 @@ export async function setKey(
     };
   }
 
-  const previousVersions = await enabledVersions(c, projectId, secretName);
-
   const updated = { ...current, [key]: value };
+  const sortedUpdated = Object.fromEntries(
+    Object.keys(updated)
+      .sort()
+      .map((updatedKey) => [updatedKey, updated[updatedKey]]),
+  );
   const payload = Buffer.from(
-    JSON.stringify(updated, Object.keys(updated).sort(), 2),
+    JSON.stringify(sortedUpdated, null, 2),
     'utf-8',
   );
 
@@ -202,18 +249,16 @@ export async function setKey(
   // Verificación antes de destruir nada: si la versión nueva no se puede leer,
   // destruir la vieja dejaría la app sin secreto.
   const [verify] = await c.accessSecretVersion({ name: newVersion });
-  const verified = JSON.parse(
-    Buffer.from(verify.payload?.data ?? '').toString('utf-8'),
-  ) as Record<string, unknown>;
-  if (verified[key] !== value) {
+  const verifiedPayload = Buffer.from(verify.payload?.data ?? '').toString('utf-8');
+  if (verifiedPayload !== payload.toString('utf-8')) {
     throw new SecretsError(
-      `Wrote version ${newVersion} but reading it back did not return the expected ` +
-        'value. Nothing was destroyed; inspect the secret by hand.',
+      `Wrote version ${newVersion} but reading it back did not return the complete ` +
+        'expected payload. Nothing was destroyed; inspect the secret by hand.',
     );
   }
 
   const destroyed: string[] = [];
-  for (const versionName of previousVersions) {
+  for (const versionName of snapshot.billable) {
     if (versionName === newVersion) continue;
     try {
       await c.destroySecretVersion({ name: versionName });
@@ -247,6 +292,7 @@ export async function setKey(
  */
 export async function readValueFromStdin(
   stream: AsyncIterable<string | Buffer> = process.stdin,
+  options: { allowEmpty?: boolean } = {},
 ): Promise<string> {
   const chunks: string[] = [];
   for await (const chunk of stream) {
@@ -254,7 +300,7 @@ export async function readValueFromStdin(
   }
   let value = chunks.join('');
   if (value.endsWith('\n')) value = value.slice(0, -1);
-  if (value === '') {
+  if (value === '' && options.allowEmpty !== true) {
     throw new SecretsError('No value provided on stdin.');
   }
   return value;

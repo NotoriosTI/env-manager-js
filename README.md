@@ -25,6 +25,8 @@ environments:
   production:
     origin: gcp
     gcp_project_id: my-gcp-project
+    consolidated_secret: my-app-config
+    fallback_to_individual: false
 
 variables:
   DB_PASSWORD:
@@ -202,6 +204,7 @@ Named environments, selected at runtime via `APP_ENV`.
 | `default` | `boolean` | no | Use this environment when `APP_ENV` is not set. Only one environment may be the default. |
 | `encrypted_dotenv.enabled` | `boolean` | no | Enable encrypted dotenv support for this environment. See [Encrypted Dotenv Support](#encrypted-dotenv-support). |
 | `consolidated_secret` | `string` | no | Name of the app's single consolidated JSON secret in Secret Manager (`origin: gcp` only). See [Consolidated Secret](#consolidated-secret). |
+| `fallback_to_individual` | `boolean` | no | Fetch missing JSON keys from individual GCP secrets. Defaults to `true`; `false` requires `consolidated_secret`. |
 
 **Active environment selection order:**
 
@@ -317,6 +320,8 @@ const value = manager.get('MY_VAR');
 interface ConfigManagerOptions {
   secretOrigin?: 'local' | 'gcp'; // Override secret origin (highest priority in chain)
   gcpProjectId?: string | null;   // Override GCP project ID (highest priority in chain)
+  consolidatedSecret?: string | null;
+  fallbackToIndividual?: boolean; // Defaults to true
   dotenvPath?: string | null;     // Override .env file path
   strict?: boolean;               // Override strict validation (takes precedence over YAML)
   debug?: boolean;                // Log unmasked values during load. Never use in production.
@@ -365,6 +370,9 @@ Reads variables from GCP Secret Manager (`projects/{id}/secrets/{key}/versions/l
 **Constructor:** `new GCPSecretLoader(gcpProjectId: string, options?)`
 
 - `options.createClient?: () => GCPSecretClient` — injectable client factory for testing.
+- `options.consolidatedSecret?: string` — consolidated JSON secret to preload.
+- `options.fallbackToIndividual?: boolean` — defaults to `true`; when `false`,
+  missing JSON keys do not trigger individual Secret Manager calls.
 
 **Behavior:**
 - Results are cached per-loader-instance (each key is fetched at most once).
@@ -398,6 +406,11 @@ The `.env` path for a variable resolves as:
 1. `ConfigManagerOptions.dotenvPath` (used as-is).
 2. Active environment's `dotenv_path` (relative paths resolve from the project root).
 3. Old-format default: `<config file directory>/.env`.
+
+> **Precedence warning:** `SECRET_ORIGIN`, `GCP_PROJECT_ID`, and
+> `CONSOLIDATED_SECRET` from `process.env` or `.env` take precedence over YAML.
+> They can redirect the effective source without a repository change; audit
+> deployment configuration when the selected source is unexpected.
 
 ---
 
@@ -717,21 +730,31 @@ environments:
     origin: gcp
     gcp_project_id: my-gcp-project
     consolidated_secret: my-app-config
+    fallback_to_individual: false
 ```
 
 At boot the loader fetches that one secret, parses the JSON object and preloads
 every value into its cache — one Secret Manager call instead of one per key.
-Keys absent from the payload still fall back to individual secret lookups, so
-migrating is safe. A payload that is missing, is not JSON, or is not an object
-logs a warning and falls back; it never takes the app down.
+`fallback_to_individual` defaults to `true`: keys absent from the payload still
+fall back to individual secret lookups, so migration is incremental. Set it to
+`false` to make the payload authoritative; missing keys then follow the existing
+required/default/optional rules without extra Secret Manager calls. With
+fallback disabled, a missing consolidated secret or a payload that is not a
+JSON object fails immediately. `fallback_to_individual: false` requires
+`consolidated_secret`.
+
+Each `getMany()` logs one aggregate summary with the number of keys preloaded,
+served from JSON, fetched individually, and missing. It never logs key names or
+values. The summary is `INFO` when every requested key came from the consolidated
+payload, and `WARNING` when individual accesses or missing keys remain.
 
 Resolution order: explicit `consolidatedSecret` option → `CONSOLIDATED_SECRET`
 env var → `CONSOLIDATED_SECRET` in `.env` → the active environment's
 `consolidated_secret` → none.
 
-Why one secret: Secret Manager bills per enabled version, so one secret with one
-live version is the cheapest shape, and reading once at boot keeps the call
-count flat no matter how many variables the app declares.
+Why one secret: Secret Manager bills both `ENABLED` and `DISABLED` versions, so
+one secret with one billable version is the cheapest shape, and reading once at
+boot keeps the call count flat no matter how many variables the app declares.
 
 ---
 
@@ -744,7 +767,7 @@ npx env-manager encrypt <file> [--env NAME] [--force] [-o OUT] [--format text|js
 npx env-manager decrypt <file> [--env NAME] [--key HEX] [-o OUT] [--format text|json]
 
 npx env-manager secrets list <secret> --project PROJECT [--format text|json]
-echo -n "value" | npx env-manager secrets set <secret> --key KEY --project PROJECT
+echo -n "value" | npx env-manager secrets set <secret> --key KEY --project PROJECT [--allow-empty]
 
 npx env-manager --version
 npx env-manager --help
@@ -774,12 +797,17 @@ echo -n "new-value" | \
 npx env-manager secrets list my-app-config --project my-gcp-project   # names only
 ```
 
-`secrets set` reads the current JSON payload, merges the key, adds a new
-version, reads it back to verify, and only then destroys the previously enabled
-versions — Secret Manager bills per enabled version. Writing the same value
-twice creates no new version. The value comes from stdin, never from `argv`,
-where it would land in `ps` and in shell history. A secret that does not exist
-is an error: create it empty by hand first.
+`secrets set` snapshots the existing versions, reads the current JSON payload,
+merges the key, adds a new version, reads it back to verify, and only then
+destroys the previous `ENABLED` and `DISABLED` versions. Both states are
+billable; `DESTROYED` versions are ignored. Writing the same value twice creates
+no new version. The value comes from stdin, never from `argv`, where it would
+land in `ps` and in shell history.
+
+Empty stdin is rejected by default. Pass `--allow-empty` to intentionally store
+`""`. An existing secret resource with no versions is initialized from `{}`;
+a secret resource that does not exist remains an error. Concurrent writers to
+the same secret are not supported and must be serialized externally.
 
 ---
 

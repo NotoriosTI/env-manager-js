@@ -47,6 +47,8 @@ export interface EnvironmentConfig {
    * Solo aplica a entornos con origin 'gcp'.
    */
   consolidatedSecret?: string | null;
+  /** Whether missing consolidated keys may fall back to per-secret GSM reads. */
+  fallbackToIndividual?: boolean;
 }
 
 export interface VariableDefinition {
@@ -73,6 +75,7 @@ export interface SourceContext {
   gcpProjectId: string | null;
   dotenvPath: string | null;
   consolidatedSecret?: string | null;
+  fallbackToIndividual?: boolean;
 }
 
 export type ConfigValidationIssueType = 'missing' | 'invalid';
@@ -103,4 +106,6 @@ export interface ConfigManagerOptions {
   debug?: boolean;
   /** Secreto JSON consolidado de la app en GSM (blueprint §1.1). */
   consolidatedSecret?: string | null;
+  /** Defaults to true for backward compatibility. */
+  fallbackToIndividual?: boolean;
 }

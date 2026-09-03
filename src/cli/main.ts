@@ -41,6 +41,7 @@ interface ParsedArgs {
   output?: string;
   project?: string;
   force: boolean;
+  allowEmpty: boolean;
   format: 'text' | 'json';
   help: boolean;
   /** Posicionales sobrantes, en orden. Los usa `secrets`. */
@@ -56,7 +57,7 @@ Acciones:
   encrypt <file>            Encrypt a .env file using dotenvx-compatible ECIES encryption
   decrypt <file>            Decrypt an encrypted .env file back to plaintext
   secrets list <secret>     List the key names in the consolidated secret (never values)
-  secrets set <secret>      Set one key, adding a new version and destroying the previous one
+  secrets set <secret>      Set one key and destroy previous billable versions (enabled/disabled)
 
 Opciones de encrypt:
   --env <name>         Environment name (writes DOTENV_PRIVATE_KEY_<NAME> in .env.keys)
@@ -73,6 +74,7 @@ Opciones de decrypt:
 Opciones de secrets:
   --project <id>       GCP project id (obligatorio)
   --key <name>         Key name inside the JSON payload (obligatorio en set)
+  --allow-empty        Allow an empty value for 'secrets set'
   --format <text|json> Output format for stdout (default: text)
 
   El valor de 'secrets set' se lee de stdin, nunca de argv.
@@ -83,7 +85,13 @@ Opciones globales:
 }
 
 function parseArgs(args: readonly string[]): ParsedArgs {
-  const parsed: ParsedArgs = { force: false, format: 'text', help: false, positionals: [] };
+  const parsed: ParsedArgs = {
+    force: false,
+    allowEmpty: false,
+    format: 'text',
+    help: false,
+    positionals: [],
+  };
 
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
@@ -91,6 +99,8 @@ function parseArgs(args: readonly string[]): ParsedArgs {
       parsed.help = true;
     } else if (arg === '--force') {
       parsed.force = true;
+    } else if (arg === '--allow-empty') {
+      parsed.allowEmpty = true;
     } else if (arg === '--env' && i + 1 < args.length) {
       parsed.env = args[++i];
     } else if (arg === '--key' && i + 1 < args.length) {
@@ -234,7 +244,7 @@ async function runSecrets(args: ParsedArgs): Promise<void> {
       return;
     }
 
-    const value = await readValueFromStdin();
+    const value = await readValueFromStdin(process.stdin, { allowEmpty: args.allowEmpty });
     const result = await setKey(args.project, secretName, args.key as string, value);
 
     const lines = result.unchanged
@@ -283,6 +293,16 @@ export async function dispatch(argv: readonly string[]): Promise<void> {
   } catch (error: unknown) {
     process.stderr.write(
       `Error: ${error instanceof Error ? error.message : String(error)}\n${usage()}\n`,
+    );
+    process.exit(exitCodes.USAGE);
+  }
+
+  if (
+    args.allowEmpty &&
+    (action !== 'secrets' || args.positionals[0] !== 'set')
+  ) {
+    process.stderr.write(
+      `Error: --allow-empty is only valid for 'secrets set'\n${usage()}\n`,
     );
     process.exit(exitCodes.USAGE);
   }

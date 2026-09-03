@@ -23,6 +23,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { ConfigManager, _resetSingleton } from '../src/manager.js';
 import { GCPSecretLoader } from '../src/loaders/gcp.js';
+import { setKey, type SecretsClient } from '../src/cli/secrets.js';
 
 const RUN_GCP = process.env.RUN_REAL_GCP_TESTS === '1';
 const PROJECT = process.env.GCP_PROJECT_ID ?? process.env.ENV_MANAGER_ITEST_PROJECT ?? '';
@@ -43,13 +44,15 @@ const TIMEOUT = 30000;
 
 let consolidatedName = '';
 let individualName = '';
+let rotationName = '';
 let tmpDir = '';
 let configPath = '';
-let client: {
+type IntegrationClient = SecretsClient & {
   createSecret(request: unknown): Promise<unknown>;
-  addSecretVersion(request: unknown): Promise<unknown>;
+  disableSecretVersion(request: { name: string }): Promise<unknown>;
   deleteSecret(request: { name: string }): Promise<unknown>;
 };
+let client: IntegrationClient;
 const createdPaths: string[] = [];
 
 beforeAll(async () => {
@@ -62,6 +65,7 @@ beforeAll(async () => {
   const suffix = randomUUID().replace(/-/g, '').slice(0, 8);
   consolidatedName = `env-manager-itest-${suffix}-config`;
   individualName = `env-manager-itest-${suffix}-ITEST_INDIVIDUAL`;
+  rotationName = `env-manager-itest-${suffix}-rotation`;
 
   const create = async (secretId: string, payload: string): Promise<void> => {
     await client.createSecret({
@@ -78,6 +82,12 @@ beforeAll(async () => {
 
   await create(consolidatedName, JSON.stringify(CONSOLIDATED_PAYLOAD));
   await create(individualName, INDIVIDUAL_VALUE);
+  await client.createSecret({
+    parent,
+    secretId: rotationName,
+    secret: { replication: { automatic: {} } },
+  });
+  createdPaths.push(`${parent}/secrets/${rotationName}`);
 
   tmpDir = mkdtempSync(join(tmpdir(), 'env-manager-itest-'));
   writeFileSync(join(tmpDir, 'package.json'), JSON.stringify({ name: 'itest' }), 'utf8');
@@ -284,6 +294,53 @@ describe('comportamiento a nivel de loader', () => {
         ITEST_STR: 'hello-from-consolidated',
         [individualName]: 'hello-from-individual',
       });
+    },
+    TIMEOUT,
+  );
+});
+
+describe('rotación sobre un secreto descartable', () => {
+  it.skipIf(skipGcp)(
+    'crea la primera versión y destruye versiones previas ENABLED y DISABLED',
+    async () => {
+      const parent = `projects/${PROJECT}/secrets/${rotationName}`;
+
+      // El recurso se creó sin versiones en beforeAll. setKey debe poder
+      // inicializarlo sin confundirlo con un recurso inexistente.
+      const first = await setKey(PROJECT, rotationName, 'FIRST', 'one', client);
+      expect(first.createdVersion).toMatch(/\/versions\/1$/);
+      expect(first.destroyedVersions).toEqual([]);
+      if (first.createdVersion === null) {
+        throw new Error('Expected setKey to create the first disposable version');
+      }
+
+      // Deja una versión DISABLED antigua y una latest ENABLED legible. La
+      // siguiente rotación debe destruir ambas por ser facturables.
+      const [secondVersion] = await client.addSecretVersion({
+        parent,
+        payload: {
+          data: Buffer.from(JSON.stringify({ FIRST: 'one', SECOND: 'two' }), 'utf-8'),
+        },
+      });
+      await client.disableSecretVersion({ name: first.createdVersion });
+
+      const rotated = await setKey(PROJECT, rotationName, 'THIRD', 'three', client);
+      expect(rotated.destroyedVersions.sort()).toEqual(
+        [first.createdVersion, secondVersion.name].sort(),
+      );
+      expect(rotated.createdVersion).not.toBeNull();
+
+      const [versions] = await client.listSecretVersions({ parent });
+      const billable = versions
+        .filter(
+          (version) =>
+            version.state === 'ENABLED' ||
+            version.state === 'DISABLED' ||
+            version.state === 1 ||
+            version.state === 2,
+        )
+        .map((version) => version.name);
+      expect(billable).toEqual([rotated.createdVersion]);
     },
     TIMEOUT,
   );
