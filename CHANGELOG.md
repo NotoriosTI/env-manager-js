@@ -3,6 +3,15 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 Este proyecto sigue versionado semántico.
 
+## [0.3.3] — 2026-09-03
+
+### Notas
+
+- Reempaquetado de `0.3.2` porque la autenticación web de npm reservó esa
+  versión sin dejarla disponible en el registro público.
+- Normalizadas las rutas `bin` para que npm 11 incluya los tres ejecutables CLI
+  en el paquete publicado.
+
 ## [0.3.2] — 2026-09-03
 
 ### Notas

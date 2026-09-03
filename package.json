@@ -3,13 +3,13 @@
   "publishConfig": {
     "access": "public"
   },
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "",
   "type": "module",
   "bin": {
-    "env-manager": "./dist/main.js",
-    "env-manager-encrypt": "./dist/legacy-encrypt.js",
-    "env-manager-decrypt": "./dist/legacy-decrypt.js"
+    "env-manager": "dist/main.js",
+    "env-manager-encrypt": "dist/legacy-encrypt.js",
+    "env-manager-decrypt": "dist/legacy-decrypt.js"
   },
   "main": "./dist/index.cjs",
   "types": "./dist/index.d.ts",
@@ -39,7 +39,7 @@
   "author": "bastianibanez",
   "repository": {
     "type": "git",
-    "url": "https://github.com/NotoriosTI/env-manager-js"
+    "url": "git+https://github.com/NotoriosTI/env-manager-js.git"
   },
   "homepage": "https://github.com/NotoriosTI/env-manager-js#readme",
   "license": "ISC",
