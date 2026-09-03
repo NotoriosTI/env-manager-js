@@ -28,6 +28,11 @@ export interface GCPSecretLoaderOptions {
    * puesto, se busca una sola vez al arrancar y precarga la caché.
    */
   consolidatedSecret?: string | null;
+  /**
+   * Whether keys absent from the consolidated payload may be fetched from
+   * individual GSM secrets. Defaults to true for backward compatibility.
+   */
+  fallbackToIndividual?: boolean;
   /** Timeout por llamada, en segundos. Precede a ENV_MANAGER_GCP_TIMEOUT. */
   timeout?: number;
   /** Espera entre reintentos, en ms. Solo para tests. */
@@ -109,6 +114,9 @@ export class GCPSecretLoader implements SecretLoader {
   private readonly cache: Map<string, string | null>;
   private readonly retryBaseDelayMs: number;
   private readonly consolidatedSecret: string | null;
+  private readonly fallbackToIndividual: boolean;
+  private consolidatedPreloadedCount = 0;
+  private readonly cacheSource = new Map<string, 'consolidated' | 'individual'>();
   /**
    * La precarga en vuelo. Se guarda la promesa, no un booleano: `get()` se
    * llama en paralelo desde `getMany()`, y con un flag el primer llamador
@@ -125,14 +133,26 @@ export class GCPSecretLoader implements SecretLoader {
     this.timeout = resolveTimeout(options.timeout);
     this.retryBaseDelayMs = options.retryBaseDelayMs ?? 500;
     this.consolidatedSecret = options.consolidatedSecret ?? null;
+    if (
+      options.fallbackToIndividual !== undefined &&
+      typeof options.fallbackToIndividual !== 'boolean'
+    ) {
+      throw new Error('GCPSecretLoader: fallbackToIndividual must be a boolean');
+    }
+    this.fallbackToIndividual = options.fallbackToIndividual ?? true;
+    if (!this.fallbackToIndividual && this.consolidatedSecret === null) {
+      throw new Error(
+        'GCPSecretLoader: fallbackToIndividual cannot be false without consolidatedSecret',
+      );
+    }
   }
 
   /**
    * Trae el secreto JSON consolidado una sola vez y precarga la caché.
    *
    * Blueprint §1.1: un acceso a GSM al boot en vez de uno por clave. Si el
-   * secreto no está, no es JSON o no es un objeto, se avisa y se cae al camino
-   * de secretos individuales — migrar no puede tumbar la app.
+   * secreto no está, no es JSON o no es un objeto, el modo compatible avisa y
+   * cae al camino individual; el modo estricto falla antes de leer otra clave.
    */
   private preloadConsolidated(): Promise<void> {
     if (this.consolidatedSecret === null) return Promise.resolve();
@@ -141,8 +161,14 @@ export class GCPSecretLoader implements SecretLoader {
   }
 
   private async fetchConsolidated(secretName: string): Promise<void> {
-    const raw = await this.access(secretName);
+    const raw = await this.access(secretName, false);
     if (raw === null) {
+      if (!this.fallbackToIndividual) {
+        throw new Error(
+          `Consolidated secret '${secretName}' not found in project ` +
+            `'${this.gcpProjectId}' and fallbackToIndividual is disabled.`,
+        );
+      }
       logger.warn(
         `Consolidated secret '${secretName}' not found; ` +
           'falling back to individual secret lookups.',
@@ -154,6 +180,12 @@ export class GCPSecretLoader implements SecretLoader {
     try {
       data = JSON.parse(raw);
     } catch {
+      if (!this.fallbackToIndividual) {
+        throw new Error(
+          `Consolidated secret '${secretName}' is not valid JSON and ` +
+            'fallbackToIndividual is disabled.',
+        );
+      }
       logger.warn(
         `Consolidated secret '${secretName}' is not valid JSON; ` +
           'falling back to individual secret lookups.',
@@ -162,6 +194,12 @@ export class GCPSecretLoader implements SecretLoader {
     }
 
     if (data === null || typeof data !== 'object' || Array.isArray(data)) {
+      if (!this.fallbackToIndividual) {
+        throw new Error(
+          `Consolidated secret '${secretName}' must be a JSON object and ` +
+            'fallbackToIndividual is disabled.',
+        );
+      }
       logger.warn(
         `Consolidated secret '${secretName}' must be a JSON object; ` +
           'falling back to individual secret lookups.',
@@ -170,9 +208,11 @@ export class GCPSecretLoader implements SecretLoader {
     }
 
     const entries = Object.entries(data as Record<string, unknown>);
+    this.consolidatedPreloadedCount = entries.length;
     for (const [key, value] of entries) {
       if (!this.cache.has(key)) {
         this.cache.set(key, typeof value === 'string' ? value : JSON.stringify(value));
+        this.cacheSource.set(key, 'consolidated');
       }
     }
     logger.info(
@@ -187,13 +227,18 @@ export class GCPSecretLoader implements SecretLoader {
       return this.cache.get(key) as string | null;
     }
 
-    const value = await this.access(key);
+    if (!this.fallbackToIndividual) {
+      return null;
+    }
+
+    const value = await this.access(key, true);
     this.cache.set(key, value);
+    this.cacheSource.set(key, 'individual');
     return value;
   }
 
   /** Una lectura a GSM, con timeout, taxonomía y reintentos acotados. */
-  private async access(key: string): Promise<string | null> {
+  private async access(key: string, warnNotFound: boolean): Promise<string | null> {
     const name = `projects/${this.gcpProjectId}/secrets/${key}/versions/latest`;
     const timeoutMs = this.timeout * 1000;
 
@@ -210,7 +255,9 @@ export class GCPSecretLoader implements SecretLoader {
         const code = errorCode(error);
 
         if (code === NOT_FOUND) {
-          logger.warn(`Secret '${key}' not found in project '${this.gcpProjectId}'.`);
+          if (warnNotFound) {
+            logger.warn(`Secret '${key}' not found in project '${this.gcpProjectId}'.`);
+          }
           return null;
         }
 
@@ -242,7 +289,45 @@ export class GCPSecretLoader implements SecretLoader {
   }
 
   async getMany(keys: readonly string[]): Promise<Record<string, string | null>> {
-    const pairs = await Promise.all(keys.map(async (k) => [k, await this.get(k)] as const));
-    return Object.fromEntries(pairs);
+    const uniqueKeys = [...new Set(keys)];
+    await this.preloadConsolidated();
+
+    let resolvedFromConsolidated = 0;
+    let individualAccesses = 0;
+    const pairs = await Promise.all(
+      uniqueKeys.map(async (key) => {
+        if (this.cache.has(key)) {
+          if (this.cacheSource.get(key) === 'consolidated') {
+            resolvedFromConsolidated += 1;
+          }
+          return [key, this.cache.get(key) as string | null] as const;
+        }
+
+        if (!this.fallbackToIndividual) {
+          return [key, null] as const;
+        }
+
+        individualAccesses += 1;
+        const value = await this.access(key, false);
+        this.cache.set(key, value);
+        this.cacheSource.set(key, 'individual');
+        return [key, value] as const;
+      }),
+    );
+    const results = Object.fromEntries(pairs);
+
+    const missing = Object.values(results).filter((value) => value === null).length;
+    const message =
+      `GCP secret load summary: preloaded=${this.consolidatedPreloadedCount}, ` +
+      `resolved_from_consolidated=${resolvedFromConsolidated}, ` +
+      `individual_accesses=${individualAccesses}, missing=${missing}, ` +
+      `fallback_to_individual=${String(this.fallbackToIndividual)}.`;
+    if (resolvedFromConsolidated !== uniqueKeys.length || missing > 0) {
+      logger.warn(message);
+    } else {
+      logger.info(message);
+    }
+
+    return results;
   }
 }

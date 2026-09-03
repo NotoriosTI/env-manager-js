@@ -27,10 +27,12 @@ function grpcError(code: number, message = 'boom'): Error & { code: number } {
 /** Cliente de GSM en memoria: versiones numeradas y estado por versión. */
 class FakeClient implements SecretsClient {
   payloads: Record<string, string> = {};
-  states: Record<string, string> = {};
+  states: Record<string, string | number> = {};
   destroyError: Error | null = null;
+  latestError: Error | null = null;
   added: string[] = [];
   destroyed: string[] = [];
+  calls: string[] = [];
 
   constructor(
     payload = '{}',
@@ -50,9 +52,11 @@ class FakeClient implements SecretsClient {
   }
 
   async accessSecretVersion(request: { name: string }) {
+    this.calls.push(`access:${request.name}`);
     if (this.missing) throw grpcError(5, 'no such secret');
     let version = this.versionId(request.name);
     if (version === 'latest') {
+      if (this.latestError !== null) throw this.latestError;
       version = Object.keys(this.payloads).sort((a, b) => Number(b) - Number(a))[0];
     }
     return [{ payload: { data: Buffer.from(this.payloads[version], 'utf-8') } }] as [
@@ -61,6 +65,8 @@ class FakeClient implements SecretsClient {
   }
 
   async listSecretVersions(request: { parent: string }) {
+    this.calls.push(`list:${request.parent}`);
+    if (this.missing) throw grpcError(5, 'no such secret');
     const versions = Object.keys(this.payloads)
       .sort((a, b) => Number(b) - Number(a))
       .map((v) => ({ name: `${request.parent}/versions/${v}`, state: this.states[v] }));
@@ -68,6 +74,7 @@ class FakeClient implements SecretsClient {
   }
 
   async addSecretVersion(request: { parent: string; payload: { data: Buffer } }) {
+    this.calls.push(`add:${request.parent}`);
     const ids = Object.keys(this.payloads).map(Number);
     const newId = String((ids.length > 0 ? Math.max(...ids) : 0) + 1);
     this.payloads[newId] = request.payload.data.toString('utf-8');
@@ -78,6 +85,7 @@ class FakeClient implements SecretsClient {
   }
 
   async destroySecretVersion(request: { name: string }) {
+    this.calls.push(`destroy:${request.name}`);
     if (this.destroyError !== null) throw this.destroyError;
     this.states[this.versionId(request.name)] = 'DESTROYED';
     this.destroyed.push(request.name);
@@ -104,12 +112,92 @@ describe('setKey', () => {
     expect(client.states['2']).toBe('ENABLED');
   });
 
+  it('toma el snapshot antes de leer latest', async () => {
+    const client = new FakeClient(JSON.stringify({ A: '1' }), { versions: ['1'] });
+
+    await setKey(PROJECT, SECRET, 'B', '2', client);
+
+    expect(client.calls[0]).toMatch(/^list:/);
+    expect(client.calls[1]).toMatch(/\/versions\/latest$/);
+  });
+
+  it('no destruye una versión creada por otro escritor después del snapshot', async () => {
+    const client = new FakeClient(JSON.stringify({ A: '1' }), { versions: ['1'] });
+    const originalAccess = client.accessSecretVersion.bind(client);
+    let inserted = false;
+    client.accessSecretVersion = async (request: { name: string }) => {
+      if (request.name.endsWith('/versions/latest') && !inserted) {
+        inserted = true;
+        client.payloads['2'] = JSON.stringify({ A: 'concurrent' });
+        client.states['2'] = 'ENABLED';
+      }
+      return originalAccess(request);
+    };
+
+    const result = await setKey(PROJECT, SECRET, 'B', '2', client);
+
+    expect(result.createdVersion).toMatch(/\/versions\/3$/);
+    expect(result.destroyedVersions).toEqual([
+      `projects/${PROJECT}/secrets/${SECRET}/versions/1`,
+    ]);
+    expect(client.states['2']).toBe('ENABLED');
+  });
+
   it('mezcla en vez de reemplazar el payload', async () => {
     const client = new FakeClient(JSON.stringify({ A: '1' }), { versions: ['1'] });
 
     await setKey(PROJECT, SECRET, 'B', '2', client);
 
     expect(JSON.parse(client.payloads['2'])).toEqual({ A: '1', B: '2' });
+  });
+
+  it('ordena sólo el nivel superior y conserva objetos y arrays anidados', async () => {
+    const client = new FakeClient(
+      JSON.stringify({
+        Z: 'last',
+        NESTED: { beta: 2, alpha: { enabled: true } },
+        ITEMS: [{ id: 1, metadata: { label: 'one' } }],
+      }),
+      { versions: ['1'] },
+    );
+
+    await setKey(PROJECT, SECRET, 'A', 'first', client);
+
+    expect(JSON.parse(client.payloads['2'])).toEqual({
+      A: 'first',
+      ITEMS: [{ id: 1, metadata: { label: 'one' } }],
+      NESTED: { beta: 2, alpha: { enabled: true } },
+      Z: 'last',
+    });
+    expect(Object.keys(JSON.parse(client.payloads['2']))).toEqual([
+      'A',
+      'ITEMS',
+      'NESTED',
+      'Z',
+    ]);
+  });
+
+  it('verifica el payload completo antes de destruir versiones anteriores', async () => {
+    const client = new FakeClient(
+      JSON.stringify({ NESTED: { keep: 'yes', deep: { value: 1 } } }),
+      { versions: ['1'] },
+    );
+    const originalAccess = client.accessSecretVersion.bind(client);
+    client.accessSecretVersion = async (request: { name: string }) => {
+      const response = await originalAccess(request);
+      if (request.name.endsWith('/versions/2')) {
+        return [{ payload: { data: Buffer.from(JSON.stringify({ B: '2' })) } }] as [
+          { payload: { data: Buffer } },
+        ];
+      }
+      return response;
+    };
+
+    await expect(setKey(PROJECT, SECRET, 'B', '2', client)).rejects.toThrow(
+      /complete expected payload/,
+    );
+    expect(client.destroyed).toEqual([]);
+    expect(client.states['1']).toBe('ENABLED');
   });
 
   it('escribir el mismo valor no crea versión', async () => {
@@ -138,6 +226,29 @@ describe('setKey', () => {
     ).toEqual(['4']);
   });
 
+  it('destruye versiones ENABLED y DISABLED en forma string o numérica', async () => {
+    const client = new FakeClient(JSON.stringify({ A: '1' }), {
+      versions: ['1', '2', '3', '4', '5'],
+    });
+    client.states = {
+      '1': 'DESTROYED',
+      '2': 'DISABLED',
+      '3': 2,
+      '4': 'ENABLED',
+      '5': 1,
+    };
+
+    const result = await setKey(PROJECT, SECRET, 'B', '2', client);
+
+    expect(result.destroyedVersions.map((name) => name.split('/').pop())).toEqual([
+      '5',
+      '4',
+      '3',
+      '2',
+    ]);
+    expect(client.states['1']).toBe('DESTROYED');
+  });
+
   it('si la destrucción falla, nombra la versión que quedó colgando', async () => {
     const client = new FakeClient(JSON.stringify({ A: '1' }), { versions: ['1'] });
     client.destroyError = grpcError(7, 'nope');
@@ -158,6 +269,26 @@ describe('setKey', () => {
 
     await expect(setKey(PROJECT, SECRET, 'A', '1', client)).rejects.toThrow(
       /does not create secrets/,
+    );
+    expect(client.added).toEqual([]);
+  });
+
+  it('un recurso existente sin versiones parte desde un objeto vacío', async () => {
+    const client = new FakeClient('{}', { versions: [] });
+
+    const result = await setKey(PROJECT, SECRET, 'A', '1', client);
+
+    expect(result.createdVersion).toMatch(/\/versions\/1$/);
+    expect(JSON.parse(client.payloads['1'])).toEqual({ A: '1' });
+    expect(client.calls.some((call) => call.endsWith('/versions/latest'))).toBe(false);
+  });
+
+  it('distingue una latest inaccesible de un recurso inexistente', async () => {
+    const client = new FakeClient('{}', { versions: ['1'] });
+    client.latestError = grpcError(5, 'latest unavailable');
+
+    await expect(setKey(PROJECT, SECRET, 'A', '1', client)).rejects.toThrow(
+      /exists.*latest version could not be read/,
     );
     expect(client.added).toEqual([]);
   });
@@ -222,5 +353,17 @@ describe('readValueFromStdin', () => {
 
   it('stdin vacío es error', async () => {
     await expect(readValueFromStdin(streamOf())).rejects.toThrow(/No value provided/);
+  });
+
+  it('permite cero bytes con allowEmpty explícito', async () => {
+    await expect(
+      readValueFromStdin(streamOf(), { allowEmpty: true }),
+    ).resolves.toBe('');
+  });
+
+  it('permite un único salto de línea como valor vacío con allowEmpty', async () => {
+    await expect(
+      readValueFromStdin(streamOf('\n'), { allowEmpty: true }),
+    ).resolves.toBe('');
   });
 });

@@ -104,6 +104,19 @@ describe('parseEnvironments', () => {
     expect(environments.development.dotenvPath).toBe('.env');
   });
 
+  it('rechaza fallback_to_individual false en un entorno local', () => {
+    expect(() =>
+      parseEnvironments({
+        environments: {
+          development: {
+            origin: 'local',
+            fallback_to_individual: false,
+          },
+        },
+      }),
+    ).toThrow(/cannot be false without 'consolidated_secret'/);
+  });
+
   it('local origin keeps explicit dotenv_path', () => {
     const environments = parseEnvironments({
       environments: {

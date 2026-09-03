@@ -6,17 +6,37 @@ import { ORIGIN_ALIASES } from './environment.js';
 export interface LoaderFactoryContext
   extends Pick<
     SourceContext,
-    'secretOrigin' | 'gcpProjectId' | 'dotenvPath' | 'consolidatedSecret'
-  > {}
+    | 'secretOrigin'
+    | 'gcpProjectId'
+    | 'dotenvPath'
+    | 'consolidatedSecret'
+  > {
+  fallbackToIndividual?: boolean;
+}
 
 const loaderCache = new Map<string, SecretLoader>();
 
 export function createLoader(context: LoaderFactoryContext): SecretLoader {
-  const { secretOrigin, gcpProjectId, dotenvPath, consolidatedSecret } = context;
+  const {
+    secretOrigin,
+    gcpProjectId,
+    dotenvPath,
+    consolidatedSecret,
+    fallbackToIndividual = true,
+  } = context;
   const rawOrigin = (secretOrigin ?? '').toLowerCase();
   const normalizedOrigin = ORIGIN_ALIASES[rawOrigin] ?? rawOrigin;
+  if (typeof fallbackToIndividual !== 'boolean') {
+    throw new Error('createLoader: fallbackToIndividual must be a boolean');
+  }
+  if (!fallbackToIndividual && !consolidatedSecret) {
+    throw new Error(
+      'createLoader: fallbackToIndividual cannot be false without consolidatedSecret',
+    );
+  }
   const cacheKey =
-    `${normalizedOrigin}:${gcpProjectId ?? ''}:${dotenvPath ?? ''}:${consolidatedSecret ?? ''}`;
+    `${normalizedOrigin}:${gcpProjectId ?? ''}:${dotenvPath ?? ''}:` +
+    `${consolidatedSecret ?? ''}:${String(fallbackToIndividual)}`;
 
   if (loaderCache.has(cacheKey)) {
     return loaderCache.get(cacheKey) as SecretLoader;
@@ -30,7 +50,10 @@ export function createLoader(context: LoaderFactoryContext): SecretLoader {
     if (!gcpProjectId) {
       throw new Error('createLoader: gcpProjectId is required for gcp origin');
     }
-    loader = new GCPSecretLoader(gcpProjectId, { consolidatedSecret });
+    loader = new GCPSecretLoader(gcpProjectId, {
+      consolidatedSecret,
+      fallbackToIndividual,
+    });
   } else {
     throw new Error(`createLoader: unsupported origin '${secretOrigin}'`);
   }

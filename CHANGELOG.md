@@ -3,6 +3,33 @@
 Formato basado en [Keep a Changelog](https://keepachangelog.com/es/1.1.0/).
 Este proyecto sigue versionado semántico.
 
+## [0.3.1] — 2026-09-03
+
+### Añadido
+
+- `secrets set --allow-empty` permite almacenar intencionalmente una cadena
+  vacía; sin el flag, stdin vacío sigue siendo un error.
+- `fallbackToIndividual` en la API y `fallback_to_individual` en YAML permiten
+  hacer autoritativo el secreto consolidado. El valor predeterminado compatible
+  es `true`.
+- Un resumen agregado por carga informa accesos al JSON, accesos individuales y
+  claves ausentes sin exponer nombres ni valores.
+
+### Corregido
+
+- La rotación destruye versiones anteriores `ENABLED` y `DISABLED`, ya que
+  ambos estados son facturables, e inicializa desde `{}` un recurso sin versiones.
+- La corrección del warning preventivo de `GCP_PROJECT_ID` aplica sólo al
+  runtime Python. JS no emite ese warning; mantiene el error explícito al crear
+  un loader GCP sin project ID.
+
+### Notas
+
+- Las escrituras concurrentes al mismo secreto no están soportadas y deben
+  serializarse externamente.
+- `SECRET_ORIGIN`, `GCP_PROJECT_ID` y `CONSOLIDATED_SECRET` definidos en el
+  entorno del proceso o `.env` prevalecen sobre el YAML.
+
 ## [0.3.0] — 2026-09-01
 
 Versión alineada con el blueprint §1 de la base de conocimiento
@@ -60,8 +87,9 @@ Versión alineada con el blueprint §1 de la base de conocimiento
 - `ConfigManager.require()` y `ConfigManager.values`, por paridad con Python.
 - `PARITY.md`: contrato de paridad con env-manager, y
   `scripts/parity-check.sh`, el gate que lo verifica.
-- Test de integración real contra Secret Manager, saltado por defecto
-  (`RUN_REAL_GCP_TESTS=1`).
+- Test de integración real contra Secret Manager, saltado por defecto y
+  limitado a un proyecto descartable explícito
+  (`RUN_REAL_GCP_TESTS=1 ENV_MANAGER_ITEST_PROJECT=<proyecto>`).
 - CI: node 20 / 22 / 24.
 
 ### Obsoleto
